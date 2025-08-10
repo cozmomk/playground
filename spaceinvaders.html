@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Crab Beach Defense — Single File</title>
+<style>
+  :root{--bg:#0b0e1a;--fg:#e6f1ff;--muted:#8aa;--ui:#111a;--ui-b:#334;--accent:#39ff14;}
+  html,body{height:100%;margin:0;background:radial-gradient(900px 520px at 50% 18%,#10162a,#060913);
+            color:var(--fg);font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;overflow:hidden;}
+  .wrap{display:grid;place-items:center;height:100%;}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;border:1px solid #1e243a;
+         box-shadow:0 10px 40px rgba(0,0,0,.6);background:linear-gradient(#00111f,#001a33);}
+  .hud{position:fixed;top:8px;left:50%;transform:translateX(-50%);
+       display:flex;flex-direction:column;align-items:center;font-weight:600;font-size:14px}
+  .hud-top{display:flex;gap:16px;margin-bottom:4px}
+  .small{font-size:12px;color:var(--muted)}
+  .btns{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);
+         display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+  .btns button{background:var(--ui);color:#fff;border:1px solid var(--ui-b);
+               border-radius:8px;padding:14px 18px;font-size:20px;min-width:54px;touch-action:manipulation}
+  .toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;
+         background:#0a0f22cc;padding:18px 22px;border:1px solid #1b2340;border-radius:10px;backdrop-filter:blur(6px)}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <canvas id="game" width="800" height="600" aria-label="Crab Beach Defense"></canvas>
+  </div>
+
+  <div class="hud" id="hud">
+    <div class="hud-top">
+      <div>Score: <span id="score">0</span></div>
+      <div>Lives: <span id="lives">3</span></div>
+      <div>Level: <span id="level">1</span></div>
+    </div>
+    <div class="small">Move: ◀ ▶ • Shoot: ● • Pause: ⏸ / P • Restart: ⟳</div>
+  </div>
+
+  <div class="btns">
+    <button ontouchstart="emitKey('ArrowLeft')"  ontouchend="emitKeyUp('ArrowLeft')">◀</button>
+    <button ontouchstart="emitKey('Space')"      ontouchend="emitKeyUp('Space')">●</button>
+    <button ontouchstart="emitKey('ArrowRight')" ontouchend="emitKeyUp('ArrowRight')">▶</button>
+    <button ontouchstart="emitKey('Pause')"      ontouchend="emitKeyUp('Pause')">⏸</button>
+  </div>
+
+<script>
+/* ============================================================
+   Crab Beach Defense — Single File
+   - Sprite atlas generated at runtime (single file, swappable ids)
+   - Rolling wave hazard every 35s (2.75s sweep), pauses enemy fire,
+     then removes bottom enemy row + one random shield block
+   - Variable projectile hitboxes by type
+   - Mobile touch controls + desktop keyboard
+   ============================================================ */
+
+const W = 800, H = 600;
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+const HUD = {
+  scoreEl: document.getElementById('score'),
+  livesEl: document.getElementById('lives'),
+  levelEl: document.getElementById('level'),
+  set(score,lives,level){ this.scoreEl.textContent=score; this.livesEl.textContent=lives; this.levelEl.textContent=level; }
+};
+
+// ---------- Utility ----------
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const rand=(a,b)=>a+Math.random()*(b-a);
+const nowMs=()=>performance.now();
+
+// ---------- Sprite Atlas (placeholder pixel art, generated) ----------
+const atlas = { map:{}, img:null };
+function genAtlas(){
+  const a = document.createElement('canvas'); a.width=256; a.height=256;
+  const g = a.getContext('2d'); g.imageSmoothingEnabled=false;
+  const put=(id,x,y,w,h,drawer)=>{ g.save(); g.translate(x,y); drawer(g,w,h); g.restore(); atlas.map[id]={x,y,w,h}; };
+
+  // palette
+  const sand='#c2a86d', sand2='#a58d58', foam='#cfefff', water='#2ab0ff', water2='#0e8de6';
+  const crab='#ff5a4d', hermit='#e8b56a', gull='#dcdcdc', shell='#b78e52', pearl='#f7f7ff';
+  const dune='#deb887', dune2='#b88a4e';
+
+  // Row positions
+  let X=0,Y=0, S=32; const step= (w)=>{ X+=w; if(X>224){X=0;Y+=32;} };
+
+  // Player sandcastle (40x18 -> fit in 40x18 cell within 48x32 slot)
+  put('player', 0,0,40,18,(p,w,h)=>{
+    p.fillStyle=sand; p.fillRect(0,h-10,w,10);
+    p.fillStyle=sand2; p.fillRect(6,h-14,8,14); p.fillRect(w-14,h-14,8,14);
+    p.fillStyle=sand; p.fillRect(w*0.35-2,-0+4, w*0.3,6); // barrel-ish
+    p.fillStyle='#0005'; p.fillRect(0,h-2,w,2);
+  }); step(48);
+
+  // Enemies
+  put('enemy_crab',48,0,30,20,(p,w,h)=>{
+    p.fillStyle=crab; p.fillRect(0,6,w,10);
+    p.clearRect(4,8,6,6); p.clearRect(w-10,8,6,6); // eyes
+    // little legs
+    p.fillRect(2,h-3,6,3); p.fillRect(w-8,h-3,6,3);
+  }); step(48);
+
+  put('enemy_hermit',96,0,30,20,(p,w,h)=>{
+    p.fillStyle=hermit; p.fillRect(0,7,w-6,11);
+    p.fillStyle='#8b6a3e'; p.fillRect(w-10,5,10,13); // shell back
+    p.clearRect(4,9,6,6);
+  }); step(48);
+
+  put('enemy_gull',144,0,30,20,(p,w,h)=>{
+    p.fillStyle=gull; p.fillRect(2,6,w-4,10);
+    p.fillStyle='#444'; p.fillRect(6,10,6,4); p.fillRect(w-12,10,6,4); // wings
+    p.fillStyle='#f5c04a'; p.fillRect(w/2-2,4,4,4); // beak
+  }); step(48);
+
+  put('clam',192,0,40,30,(p,w,h)=>{
+    p.fillStyle='#b07bd1'; p.fillRect(0,8,w,14);
+    p.fillStyle='#8f5db3'; p.fillRect(0,16,w,10);
+    p.fillStyle=pearl; p.fillRect(w/2-4,10,8,8);
+  }); step(48);
+
+  // Projectiles
+  put('proj_droplet',0,32,4,8,(p,w,h)=>{ p.fillStyle=water; p.fillRect(0,0,w,h); p.fillStyle=water2; p.fillRect(0,0,w,2); });
+  put('proj_bubble_s',8,32,6,6,(p,w,h)=>{ p.fillStyle=foam; p.fillRect(0,0,w,h); p.clearRect(1,1,2,2); });
+  put('proj_bubble_l',16,32,8,8,(p,w,h)=>{ p.fillStyle=foam; p.fillRect(0,0,w,h); p.clearRect(2,2,2,2); });
+  put('proj_shell',26,32,6,10,(p,w,h)=>{ p.fillStyle=shell; p.fillRect(0,0,w,h); p.fillStyle='#0002'; p.fillRect(0,h-2,w,2); });
+  put('proj_pearl',34,32,10,10,(p,w,h)=>{ p.fillStyle=pearl; p.fillRect(0,0,w,h); p.fillStyle='#dde'; p.fillRect(2,2,3,3); });
+
+  // Shield block
+  put('shield',48,32,12,10,(p,w,h)=>{ p.fillStyle=dune; p.fillRect(0,0,w,h); p.fillStyle=dune2; p.fillRect(0,h-3,w,3); });
+
+  // Wave frames (5)
+  for(let i=0;i<5;i++){
+    put('wave_'+(i+1), 64+i*34,32,32,16,(p,w,h)=>{
+      p.fillStyle=water2; p.fillRect(0,0,w,h);
+      p.fillStyle=water; p.fillRect(0,0,w,4);
+      p.fillStyle=foam; p.fillRect(0,h-3,w,3);
+      // little scallop
+      p.clearRect((i*5)%20, h-5, 6, 2);
+    });
+  }
+
+  // Background tile
+  put('bg_tile', 0,64,32,32,(p,w,h)=>{
+    p.fillStyle='#1a3350'; p.fillRect(0,0,w,h);
+    p.fillStyle='#0e2440'; for(let y=0;y<h;y+=4){ p.fillRect(0,y,w,1); }
+    // horizon hint (we'll draw waves separately)
+  });
+
+  atlas.img = new Image();
+  atlas.img.src = a.toDataURL(); // single-file embed
+}
+
+function drawSprite(id,x,y,w=null,h=null){
+  const s=atlas.map[id]; if(!s) return;
+  const dw=w??s.w, dh=h??s.h;
+  ctx.drawImage(atlas.img, s.x, s.y, s.w, s.h, x|0, y|0, dw|0, dh|0);
+}
+
+// ---------- Input ----------
+const keys=new Set();
+window.addEventListener('keydown',e=>{
+  const k = e.code==='Space'?'Space':(e.key===' ' ? 'Space' : e.key);
+  if(k==='Pause'){ togglePause(); return; }
+  keys.add(k);
+  if(['ArrowLeft','ArrowRight','a','d','A','D',' '].includes(e.key)||k==='Space') e.preventDefault();
+  if(k==='Space'){
+    if(G.state==='ready'){ G.state='playing'; hideToast(); }
+    else if(G.state==='won'){ nextLevel(); }
+    else if(G.state==='lost'){ reset(1); }
+  }
+  if(e.key.toLowerCase()==='p') togglePause();
+});
+window.addEventListener('keyup',e=>{
+  const k = e.code==='Space'?'Space':(e.key===' ' ? 'Space' : e.key);
+  keys.delete(k);
+});
+window.emitKey=k=>{
+  if(k==='Pause'){ togglePause(); return; }
+  keys.add(k);
+  if(k==='Space' && G.state==='ready'){ G.state='playing'; hideToast(); }
+  if(k==='Space' && G.state==='won'){ nextLevel(); }
+  if(k==='Space' && G.state==='lost'){ reset(1); }
+};
+window.emitKeyUp=k=>{ keys.delete(k); };
+
+// ---------- Game State ----------
+const WAVE_INTERVAL_MS = 35000;
+const WAVE_SWEEP_MS = 2750;
+let G;
+
+function reset(level=1){
+  G = {
+    state:'ready',
+    level,
+    score:0,
+    lives:3,
+    player:{ x:W/2-20, y:H-60, w:40, h:18, speed:320, cd:0 },
+    bullets:[],
+    ebullets:[],
+    enemies:[],
+    shields: makeShields(),
+    inv:{ dir:1, speed:40, stepDown:18 },
+    lastWaveStart: nowMs(),
+    wave: { active:false, phase:0, x: -9999, warnShown:false },
+    allowEnemyFire:true,
+    clam: { active:false, x:-60, y:46, dir:1, cd:3000, timer:0, spawnTimer:5000 }
+  };
+  spawnWave(level);
+  HUD.set(G.score,G.lives,G.level);
+  showToast(`LEVEL ${level}<br><span class="small">Press ● to start</span>`);
+}
+
+function nextLevel(){
+  G.level++;
+  G.inv.speed *= 1.12;
+  G.player.speed *= 1.02;
+  G.bullets.length=0; G.ebullets.length=0;
+  G.shields = makeShields();
+  spawnWave(G.level);
+  G.lastWaveStart = nowMs(); G.wave = {active:false, phase:0, x:-9999, warnShown:false};
+  G.state='ready';
+  HUD.set(G.score,G.lives,G.level);
+  showToast(`LEVEL ${G.level}<br><span class="small">Press ● to start</span>`);
+}
+
+function spawnWave(level){
+  const rows = 3; // crabs, hermits, gulls (identical count/motion to base)
+  const cols = 10; const padX=46, padY=40; const startX=70, startY=70;
+  G.enemies = [];
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      const w=30,h=20, ex=startX+c*padX, ey=startY+r*padY;
+      let type='crab', hp=1, score=10;
+      if(r===1){ type='hermit'; hp=2; score=20; }
+      if(r===2){ type='gull';   hp=1; score=30; }
+      G.enemies.push({x:ex,y:ey,w,h,alive:true,hp,score,type,phase:0});
+    }
+  }
+}
+
+function makeShields(){
+  const blocks=[]; const baseY=H-120; const baseW=90; const baseH=50;
+  for(let s=0;s<3;s++){
+    const sx= 120 + s* (W-240)/2;
+    for(let i=0;i<9;i++){
+      for(let j=0;j<5;j++){
+        if(j>2 && (i<2 || i>6)) continue; // carve arch
+        blocks.push({x:sx + i*(baseW/9), y:baseY + j*(baseH/5),
+                     w:(baseW/9)-2, h:(baseH/5)-2, hp:2});
+      }
+    }
+  }
+  return blocks;
+}
+
+// ---------- Loop ----------
+let last=0; requestAnimationFrame(loop);
+function loop(ts){
+  const dt = Math.min(0.033, (ts-last)/1000 || 0); last = ts;
+  update(dt); draw();
+  requestAnimationFrame(loop);
+}
+
+// ---------- Update ----------
+function update(dt){
+  if(!G) return;
+  if(G.state!=='playing'){ return; }
+
+  const p=G.player;
+  if(keys.has('ArrowLeft')||keys.has('a')||keys.has('A')) p.x -= p.speed*dt;
+  if(keys.has('ArrowRight')||keys.has('d')||keys.has('D')) p.x += p.speed*dt;
+  p.x = clamp(p.x, 10, W-10-p.w);
+  p.cd -= dt;
+  if((keys.has(' ')||keys.has('Space')) && p.cd<=0){
+    firePlayer();
+    p.cd = 0.25;
+  }
+
+  // Invader movement
+  let minX=9999, maxX=-9999, stepDown=false, aliveCount=0;
+  const live = G.enemies.filter(e=>e.alive);
+  const speed = G.inv.speed + (50 * (1 - live.length / (G.enemies.length||1)));
+  for(const e of G.enemies){
+    if(!e.alive) continue; aliveCount++;
+    e.x += (speed * G.inv.dir) * dt;
+    e.phase += dt*10;
+    minX = Math.min(minX, e.x); maxX = Math.max(maxX, e.x+e.w);
+  }
+  if(minX<=10 || maxX>=W-10){ stepDown=true; G.inv.dir *= -1; }
+  if(stepDown){
+    for(const e of G.enemies){
+      if(e.alive){ e.y += G.inv.stepDown; if(e.y+e.h>=G.player.y) lose(); }
+    }
+  }
+
+  // Enemy shooting (unless wave pausing)
+  if(G.allowEnemyFire){
+    maybeEnemyFire(dt);
+  }
+
+  // Clam UFO behavior
+  updateClam(dt);
+
+  // Bullets
+  for(const b of G.bullets){ b.y += b.vy*dt; }
+  for(const b of G.ebullets){
+    // shells (gravity) vs others
+    if(b.kind==='shell'){ b.vy += 90*dt; } // light gravity
+    b.y += b.vy*dt;
+  }
+  G.bullets = G.bullets.filter(b=>b.y>-20);
+  G.ebullets = G.ebullets.filter(b=>b.y<H+40);
+
+  // Collisions: player bullets vs enemies
+  for(const b of G.bullets){
+    for(const e of G.enemies){
+      if(!e.alive) continue;
+      if(rects(b,e)){ e.hp--; b.dead=true; if(e.hp<=0){ e.alive=false; G.score += e.score; HUD.set(G.score,G.lives,G.level);} break; }
+    }
+  }
+  G.bullets = G.bullets.filter(b=>!b.dead);
+
+  // Collisions: bullets vs shields
+  for(const arr of [G.bullets, G.ebullets]){
+    for(const b of arr){
+      for(const s of G.shields){
+        if(s.hp<=0) continue;
+        if(rects(b,s)){ s.hp--; b.dead=true; break; }
+      }
+    }
+    for(const b of arr){} // no-op
+    if(arr===G.bullets) G.bullets = G.bullets.filter(b=>!b.dead);
+    else G.ebullets = G.ebullets.filter(b=>!b.dead);
+  }
+
+  // Enemy bullets vs player
+  for(const b of G.ebullets){ if(rects(b,p)){ hit(); b.dead=true; } }
+  G.ebullets = G.ebullets.filter(b=>!b.dead);
+
+  // Wave hazard timing & animation
+  updateWave(dt);
+
+  // Win condition
+  if(aliveCount===0){
+    G.state='won';
+    showToast('YOU WIN!<br><span class="small">Press ● for next level</span>');
+  }
+}
+
+// ---------- Drawing ----------
+function draw(){
+  if(!G) return;
+
+  // Background stars/ocean-y dots
+  ctx.clearRect(0,0,W,H);
+  for(let i=0;i<64;i++){
+    const y=(i*7 + (performance.now()/20))%H; const x=(i*97)%W;
+    ctx.fillStyle='rgba(255,255,255,.12)'; ctx.fillRect(x|0,y|0,2,2);
+  }
+
+  // Far horizon hint (tile)
+  for(let x=0;x<W;x+=32){ drawSprite('bg_tile', x, 0); }
+
+  // Player
+  const p=G.player; drawSprite('player', p.x, p.y, p.w, p.h);
+
+  // Enemies
+  for(const e of G.enemies){
+    if(!e.alive) continue;
+    const id = e.type==='crab' ? 'enemy_crab' : e.type==='hermit' ? 'enemy_hermit' : 'enemy_gull';
+    drawSprite(id, e.x, e.y, e.w, e.h);
+  }
+
+  // Shields
+  for(const s of G.shields){ if(s.hp>0) drawSprite('shield', s.x, s.y, s.w, s.h); }
+
+  // Bullets
+  for(const b of G.bullets){ drawSprite(b.sprite, b.x, b.y, b.w, b.h); }
+  for(const b of G.ebullets){ drawSprite(b.sprite, b.x, b.y, b.w, b.h); }
+
+  // Wave animation overlay
+  if(G.wave.active){
+    const frames = ['wave_1','wave_2','wave_3','wave_4','wave_5'];
+    const t = (G.wave.phase % 1) * frames.length;
+    const fid = frames[Math.floor(t)];
+    // sweep from left to right along bottom quarter
+    const sweepY = H - 150;
+    const segW = 64, segH = 24;
+    const sweepX = G.wave.x;
+    for(let x=sweepX-128; x<sweepX+256; x+=32){
+      drawSprite(fid, x, sweepY, segW, segH);
+    }
+  }
+}
+
+// ---------- Actions ----------
+function firePlayer(){
+  // droplet
+  const p=G.player;
+  G.bullets.push({ x:p.x+p.w/2-2, y:p.y-10, w:4, h:8, vy:-520, sprite:'proj_droplet' });
+}
+
+function maybeEnemyFire(dt){
+  // Column-based random shooter, type decides projectile
+  if(Math.random() < 0.012 + 0.004*G.level){
+    const bottomByCol = {};
+    for(const e of G.enemies){
+      if(!e.alive) continue;
+      const col = Math.round((e.x-70)/46);
+      const cur = bottomByCol[col];
+      if(!cur || cur.y<e.y) bottomByCol[col] = e;
+    }
+    const keys = Object.keys(bottomByCol);
+    if(keys.length){
+      const pick = bottomByCol[keys[Math.floor(Math.random()*keys.length)]];
+      let projectile;
+      if(pick.type==='crab')      projectile = { w:6,h:6, vy:180, sprite:'proj_bubble_s', kind:'bubble' };
+      else if(pick.type==='hermit') projectile = { w:8,h:8, vy:160, sprite:'proj_bubble_l', kind:'bubble' };
+      else /* gull */              projectile = { w:6,h:10, vy:160, sprite:'proj_shell',    kind:'shell'  };
+      G.ebullets.push({ x:pick.x+pick.w/2 - projectile.w/2, y:pick.y+pick.h,
+                        w:projectile.w, h:projectile.h, vy:projectile.vy, sprite:projectile.sprite, kind:projectile.kind });
+    }
+  }
+}
+
+function updateClam(dt){
+  const c = G.clam;
+  // spawn pass occasionally
+  c.spawnTimer -= dt*1000;
+  if(!c.active && c.spawnTimer<=0){
+    c.active = true; c.dir = Math.random()<0.5?1:-1;
+    c.x = (c.dir===1) ? -60 : W+60; c.y=46;
+    c.timer=0; c.cd=1500+Math.random()*800;
+    c.spawnTimer = 7000 + Math.random()*5000;
+  }
+  if(c.active){
+    c.x += (120*c.dir) * dt;
+    c.timer += dt*1000;
+    if(c.timer>=c.cd){
+      c.timer=0;
+      // Fire pearl
+      G.ebullets.push({ x:c.x+20-5, y:c.y+24, w:10, h:10, vy:140, sprite:'proj_pearl', kind:'pearl' });
+    }
+    if(c.x<-80 || c.x>W+80){ c.active=false; }
+    // Draw clam
+    drawSprite('clam', c.x, c.y, 40, 30);
+  }
+}
+
+function updateWave(dt){
+  const t = nowMs();
+  const since = t - G.lastWaveStart;
+
+  if(!G.wave.warnShown && since > (WAVE_INTERVAL_MS - 1500)){
+    showToast('🌊 Tide rising!');
+    G.wave.warnShown = true;
+  }
+  if(!G.wave.active && since >= WAVE_INTERVAL_MS){
+    // Start wave
+    G.wave.active = true; G.wave.phase = 0; G.wave.x = -64;
+    G.allowEnemyFire = false;
+    hideToast();
+  }
+  if(G.wave.active){
+    G.wave.phase += dt * (WAVE_SWEEP_MS ? (1000/WAVE_SWEEP_MS) : 0.4);
+    G.wave.x += (W / (WAVE_SWEEP_MS/1000)) * dt * 1.0; // sweep L->R
+    if(G.wave.phase >= 1){
+      // once per sweep frame set? We'll just run until time reached
+    }
+    if(G.wave.x >= W + 64){
+      // End wave: apply effects
+      removeBottomEnemyRow();
+      removeRandomShieldBlock();
+      G.wave = {active:false, phase:0, x:-9999, warnShown:false};
+      G.lastWaveStart = t;
+      // Small delay to re-enable enemy fire (feels nicer)
+      setTimeout(()=>{ G.allowEnemyFire = true; }, 250);
+    }
+  }
+}
+
+function removeBottomEnemyRow(){
+  // Find max row y among alive enemies
+  let maxY=-9999; for(const e of G.enemies){ if(e.alive) maxY=Math.max(maxY,e.y); }
+  for(const e of G.enemies){ if(e.alive && e.y===maxY){ e.alive=false; } }
+}
+
+function removeRandomShieldBlock(){
+  const alive = G.shields.filter(s=>s.hp>0);
+  if(!alive.length) return;
+  const s = alive[Math.floor(Math.random()*alive.length)];
+  s.hp = 0;
+}
+
+function hit(){
+  G.lives -= 1; HUD.set(G.score,G.lives,G.level);
+  blink();
+  if(G.lives<=0) lose();
+}
+
+function lose(){
+  G.state='lost';
+  showToast('GAME OVER<br><span class="small">Press ⟳ or ● to restart</span>');
+}
+
+// ---------- Collision ----------
+function rects(a,b){ return a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y; }
+
+// ---------- UI helpers ----------
+let toastEl;
+function showToast(html){
+  if(!toastEl){ toastEl=document.createElement('div'); toastEl.className='toast'; document.body.appendChild(toastEl); }
+  toastEl.innerHTML = html; toastEl.style.display='block';
+}
+function hideToast(){ if(toastEl) toastEl.style.display='none'; }
+function togglePause(){
+  if(G.state==='playing'){ G.state='paused'; showToast('PAUSED<br><span class="small">Press ⏸/P to resume</span>'); }
+  else if(G.state==='paused'){ G.state='playing'; hideToast(); }
+}
+function blink(){ canvas.style.filter='brightness(2)'; setTimeout(()=>canvas.style.filter='brightness(1)', 80); }
+
+// ---------- Start ----------
+genAtlas();
+atlas.img.onload = ()=>{
+  reset(1);
+  requestAnimationFrame(()=>{}); // warm-up
+};
+function fit(){
+  const margin=10; const maxW=window.innerWidth-2*margin; const maxH=window.innerHeight-140;
+  const scale=Math.min(maxW/W, maxH/H);
+  canvas.style.width=(W*scale|0)+'px'; canvas.style.height=(H*scale|0)+'px';
+}
+addEventListener('resize',fit,{passive:true}); fit();
+
+</script>
+</body>
+</html>
