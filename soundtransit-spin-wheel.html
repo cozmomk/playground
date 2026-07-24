@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sound Transit Spin Wheel</title>
+<style>
+  /* ===== Sound Transit brand palette ===== */
+  :root {
+    --wave-blue: #002E6D;
+    --wave-green: #006852;
+    --wave-teal: #0091B3;
+    --action-pink: #E51A92;
+    --action-orange: #F38B00;
+    --hilite-yellow: #FFB819;
+    --railway-gray: #5A5A5A;
+    --bg-light: #F4F6F8;
+    --card-white: #FFFFFF;
+    --focus-ring: #0091B3;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+    background: linear-gradient(180deg, var(--bg-light) 0%, #E9ECEF 100%);
+    font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--wave-blue);
+  }
+
+  a { color: var(--wave-teal); }
+
+  /* ===== Header / wordmark ===== */
+  header {
+    background: var(--wave-blue);
+    color: #fff;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  }
+
+  .st-wordmark {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+  }
+
+  .st-wordmark .st-badge {
+    background: var(--action-pink);
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 900;
+    padding: 0.3rem 0.55rem;
+    border-radius: 6px;
+    line-height: 1;
+    border: 2px solid var(--hilite-yellow);
+  }
+
+  .st-wordmark .st-text {
+    font-size: 1.1rem;
+    line-height: 1.1;
+  }
+
+  .st-wordmark .st-text small {
+    display: block;
+    font-weight: 400;
+    font-size: 0.65rem;
+    letter-spacing: 1.5px;
+    color: var(--hilite-yellow);
+    text-transform: uppercase;
+  }
+
+  h1 {
+    font-size: 1.25rem;
+    margin: 0;
+    font-weight: 700;
+  }
+
+  main {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 1.5rem 1rem 4rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+  }
+
+  /* ===== Wheel card ===== */
+  .wheel-card {
+    background: var(--card-white);
+    border-radius: 20px;
+    box-shadow: 0 8px 24px rgba(0,46,109,0.15);
+    padding: 1.5rem;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem;
+  }
+
+  .wheel-wrap {
+    position: relative;
+    width: min(90vw, 440px);
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #wheelCanvas {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    box-shadow: 0 0 0 8px var(--wave-blue), 0 0 0 12px var(--hilite-yellow), 0 10px 30px rgba(0,0,0,0.3);
+    background: var(--card-white);
+  }
+
+  /* Pointer at top of wheel */
+  .pointer {
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 18px solid transparent;
+    border-right: 18px solid transparent;
+    border-top: 32px solid var(--action-pink);
+    filter: drop-shadow(0 3px 3px rgba(0,0,0,0.4));
+    z-index: 5;
+  }
+
+  .hub {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 14%;
+    height: 14%;
+    border-radius: 50%;
+    background: var(--wave-blue);
+    border: 3px solid var(--hilite-yellow);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    z-index: 4;
+  }
+
+  #spinBtn {
+    background: var(--action-pink);
+    color: #fff;
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    border: none;
+    border-radius: 999px;
+    padding: 0.9rem 2.75rem;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(229,26,146,0.4);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  }
+
+  #spinBtn:hover:not(:disabled) {
+    background: #c91480;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(229,26,146,0.5);
+  }
+
+  #spinBtn:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  #spinBtn:disabled {
+    background: var(--railway-gray);
+    cursor: not-allowed;
+    box-shadow: none;
+    opacity: 0.7;
+  }
+
+  #spinBtn:focus-visible,
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  /* ===== Result panel ===== */
+  .result-panel {
+    width: 100%;
+    min-height: 4rem;
+    background: var(--wave-green);
+    color: #fff;
+    border-radius: 14px;
+    padding: 1rem 1.25rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+  }
+
+  .result-panel .label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--hilite-yellow);
+    font-weight: 700;
+  }
+
+  .result-panel .winner {
+    font-size: 1.4rem;
+    font-weight: 800;
+  }
+
+  .result-panel.empty {
+    background: #E9ECEF;
+    color: var(--railway-gray);
+  }
+
+  .result-panel.empty .label { color: var(--railway-gray); }
+
+  /* ===== Edit link (bottom-left) ===== */
+  .edit-link {
+    position: fixed;
+    left: 1rem;
+    bottom: 1rem;
+    background: var(--wave-blue);
+    color: #fff;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 0.9rem;
+    padding: 0.6rem 1.1rem;
+    border-radius: 999px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+    border: 2px solid var(--hilite-yellow);
+    cursor: pointer;
+    z-index: 20;
+  }
+
+  .edit-link:hover { background: #001f4d; }
+
+  /* ===== Modal / editor ===== */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,20,50,0.55);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    z-index: 50;
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--card-white);
+    border-radius: 18px;
+    max-width: 560px;
+    width: 100%;
+    max-height: 88vh;
+    overflow-y: auto;
+    padding: 1.5rem;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+  }
+
+  .modal h2 {
+    margin: 0 0 0.25rem;
+    color: var(--wave-blue);
+    font-size: 1.3rem;
+  }
+
+  .modal p.hint {
+    margin: 0 0 1rem;
+    color: var(--railway-gray);
+    font-size: 0.85rem;
+  }
+
+  #optionsList {
+    list-style: none;
+    margin: 0 0 1rem;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  #optionsList li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--bg-light);
+    border-radius: 10px;
+    padding: 0.4rem 0.5rem;
+  }
+
+  #optionsList input[type="text"] {
+    flex: 1;
+    border: 1px solid #cfd6dd;
+    border-radius: 8px;
+    padding: 0.5rem 0.6rem;
+    font-size: 0.95rem;
+    color: var(--wave-blue);
+    min-width: 0;
+  }
+
+  #optionsList input[type="text"]:focus {
+    border-color: var(--wave-teal);
+  }
+
+  .swatch {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
+  }
+
+  .icon-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 0.3rem 0.45rem;
+    border-radius: 6px;
+    color: var(--railway-gray);
+    line-height: 1;
+  }
+
+  .icon-btn:hover { background: #e2e6ea; }
+
+  .icon-btn.delete { color: var(--action-pink); }
+  .icon-btn.move:disabled { opacity: 0.3; cursor: not-allowed; }
+  .icon-btn.move:disabled:hover { background: none; }
+
+  .modal-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 1rem;
+  }
+
+  .btn {
+    border: none;
+    border-radius: 999px;
+    padding: 0.65rem 1.3rem;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+
+  .btn-primary { background: var(--wave-green); color: #fff; }
+  .btn-primary:hover { background: #004f3d; }
+
+  .btn-secondary { background: var(--wave-teal); color: #fff; }
+  .btn-secondary:hover { background: #007693; }
+
+  .btn-outline {
+    background: #fff;
+    color: var(--wave-blue);
+    border: 2px solid var(--wave-blue);
+  }
+  .btn-outline:hover { background: #eef2f7; }
+
+  .btn-danger-outline {
+    background: #fff;
+    color: var(--action-pink);
+    border: 2px solid var(--action-pink);
+  }
+  .btn-danger-outline:hover { background: #fdeaf4; }
+
+  .form-error {
+    color: var(--action-pink);
+    font-size: 0.85rem;
+    min-height: 1.2em;
+    margin: -0.4rem 0 0.6rem;
+    font-weight: 600;
+  }
+
+  .add-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .add-row input[type="text"] {
+    flex: 1;
+    border: 1px solid #cfd6dd;
+    border-radius: 8px;
+    padding: 0.55rem 0.7rem;
+    font-size: 0.95rem;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  footer.note {
+    text-align: center;
+    color: var(--railway-gray);
+    font-size: 0.75rem;
+    padding-bottom: 1rem;
+  }
+
+  @media (max-width: 480px) {
+    .modal-actions .btn { flex: 1 1 auto; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="st-wordmark" aria-hidden="true">
+    <span class="st-badge">ST</span>
+    <span class="st-text">SOUND TRANSIT<small>Regional Transit Authority</small></span>
+  </div>
+  <h1>Sound Transit Spin Wheel</h1>
+</header>
+
+<main>
+  <section class="wheel-card" aria-label="Prize wheel">
+    <div class="wheel-wrap">
+      <div class="pointer" aria-hidden="true"></div>
+      <canvas id="wheelCanvas" width="600" height="600" role="img" aria-label="Spin wheel showing current prize options"></canvas>
+      <div class="hub" aria-hidden="true"></div>
+    </div>
+
+    <button id="spinBtn" type="button" aria-label="Spin the wheel">Spin</button>
+
+    <div id="resultPanel" class="result-panel empty" aria-live="polite">
+      <span class="label">Result</span>
+      <span class="winner" id="winnerText">Spin the wheel to see your result!</span>
+    </div>
+  </section>
+
+  <footer class="note">Sound Transit Spin Wheel &mdash; for fun/demo purposes only. Not an official Sound Transit product.</footer>
+</main>
+
+<button class="edit-link" id="editOpenBtn" type="button" aria-haspopup="dialog" aria-controls="editorModal">Edit</button>
+
+<!-- ===== Options editor modal ===== -->
+<div class="modal-overlay" id="editorOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editorTitle" id="editorModal">
+    <h2 id="editorTitle">Edit Wheel Options</h2>
+    <p class="hint">Add, edit, reorder, or remove options below. At least 2 options are required to spin. Changes are saved to this browser's local storage.</p>
+
+    <div class="add-row">
+      <label for="newOptionInput" class="sr-only">New option text</label>
+      <input type="text" id="newOptionInput" placeholder="Add a new option&hellip;" maxlength="60">
+      <button class="btn btn-secondary" id="addOptionBtn" type="button">+ Add Option</button>
+    </div>
+
+    <div class="form-error" id="formError" role="alert"></div>
+
+    <ul id="optionsList" aria-label="Current wheel options"></ul>
+
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="saveBtn" type="button">Save Changes</button>
+      <button class="btn btn-outline" id="cancelBtn" type="button">Cancel</button>
+      <button class="btn btn-danger-outline" id="resetBtn" type="button">Reset to Defaults</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ============================================================
+     Config & state
+     ============================================================ */
+  const STORAGE_KEY = "st-spin-wheel-options-v1";
+
+  const DEFAULT_OPTIONS = [
+    "Better luck next spin",
+    "Spin again",
+    "ST Store Discount Code",
+    "ST Hat",
+    "Paid fare - West Seattle",
+    "Ballard",
+    "Everett",
+    "Tacoma Dome",
+    "Redmond"
+  ];
+
+  // Brand palette cycled across slices
+  const PALETTE = [
+    "#002E6D", // Wave Blue
+    "#006852", // Wave Green
+    "#0091B3", // Wave Teal
+    "#E51A92", // Action Pink
+    "#F38B00", // Action Orange
+    "#FFB819"  // Hi-Lite Yellow (paired with dark text)
+  ];
+
+  let options = loadOptions();          // live options driving the wheel
+  let editingOptions = [];              // working copy used inside the modal
+  let currentRotation = 0;              // radians, current wheel rotation
+  let isSpinning = false;
+  let animationId = null;
+
+  const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+  /* ============================================================
+     Persistence
+     ============================================================ */
+  function loadOptions() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return DEFAULT_OPTIONS.slice();
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length >= 2) {
+        return parsed.filter(o => typeof o === "string" && o.trim().length > 0);
+      }
+      return DEFAULT_OPTIONS.slice();
+    } catch (e) {
+      return DEFAULT_OPTIONS.slice();
+    }
+  }
+
+  function saveOptions(opts) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(opts));
+  }
+
+  /* ============================================================
+     Canvas wheel rendering
+     ============================================================ */
+  const canvas = document.getElementById("wheelCanvas");
+  const ctx = canvas.getContext("2d");
+  const CANVAS_SIZE = canvas.width; // 600 (square, internal resolution)
+  const CENTER = CANVAS_SIZE / 2;
+  const RADIUS = CENTER - 6;
+
+  function wrapText(text, maxChars) {
+    // Simple word-wrap for long labels; falls back to truncation for single unbreakable words.
+    const words = text.split(" ");
+    const lines = [];
+    let line = "";
+    words.forEach(word => {
+      const test = line ? line + " " + word : word;
+      if (test.length > maxChars && line) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = test;
+      }
+    });
+    if (line) lines.push(line);
+    // Cap to 2 lines max, truncating the second with an ellipsis if needed.
+    if (lines.length > 2) {
+      lines[1] = lines[1].slice(0, maxChars - 1) + "…";
+      lines.length = 2;
+    }
+    return lines;
+  }
+
+  function drawWheel(rotation) {
+    const n = options.length;
+    ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+    if (n === 0) {
+      ctx.fillStyle = "#E9ECEF";
+      ctx.beginPath();
+      ctx.arc(CENTER, CENTER, RADIUS, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#5A5A5A";
+      ctx.font = "bold 20px Segoe UI, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("Add options to begin", CENTER, CENTER);
+      return;
+    }
+
+    const sliceAngle = (Math.PI * 2) / n;
+
+    for (let i = 0; i < n; i++) {
+      const startAngle = rotation + i * sliceAngle;
+      const endAngle = startAngle + sliceAngle;
+      const color = PALETTE[i % PALETTE.length];
+
+      // Slice wedge
+      ctx.beginPath();
+      ctx.moveTo(CENTER, CENTER);
+      ctx.arc(CENTER, CENTER, RADIUS, startAngle, endAngle);
+      ctx.closePath();
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.strokeStyle = "#FFFFFF";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Label: use light or dark text depending on slice brightness for contrast.
+      const isLight = color === "#FFB819" || color === "#F38B00";
+      ctx.fillStyle = isLight ? "#002E6D" : "#FFFFFF";
+
+      const midAngle = startAngle + sliceAngle / 2;
+      ctx.save();
+      ctx.translate(CENTER, CENTER);
+      ctx.rotate(midAngle);
+
+      const maxChars = n <= 6 ? 16 : n <= 10 ? 13 : 10;
+      const lines = wrapText(options[i], maxChars);
+      const fontSize = n <= 6 ? 20 : n <= 10 ? 17 : 14;
+      ctx.font = "700 " + fontSize + "px Segoe UI, sans-serif";
+      ctx.textAlign = "right";
+      ctx.textBaseline = "middle";
+
+      const textRadius = RADIUS - 24;
+      const lineHeight = fontSize * 1.15;
+      const startY = -((lines.length - 1) * lineHeight) / 2;
+      lines.forEach((line, idx) => {
+        ctx.fillText(line, textRadius, startY + idx * lineHeight);
+      });
+
+      ctx.restore();
+    }
+  }
+
+  /* ============================================================
+     Spin logic
+     ============================================================ */
+  // Determine which option index sits under the fixed top pointer,
+  // given the wheel's current rotation (radians, normalized).
+  function getWinningIndex(rotation) {
+    const n = options.length;
+    const sliceAngle = (Math.PI * 2) / n;
+    // Pointer is fixed at the top (angle = -PI/2 in standard canvas coords,
+    // i.e. 270deg / -90deg). Slice i spans [rotation + i*sliceAngle, rotation + (i+1)*sliceAngle)
+    // measured from angle 0 (positive x-axis), going clockwise as rotation increases.
+    // We need the slice whose range contains the pointer angle, accounting for rotation.
+    const pointerAngle = -Math.PI / 2;
+    let normalized = (pointerAngle - rotation) % (Math.PI * 2);
+    normalized = ((normalized % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+    const index = Math.floor(normalized / sliceAngle);
+    return ((index % n) + n) % n;
+  }
+
+  function easeOutCubic(t) {
+    return 1 - Math.pow(1 - t, 3);
+  }
+
+  function spin() {
+    if (isSpinning) return;
+    if (options.length < 2) {
+      showResult(null, "Add at least 2 options to spin (use Edit).");
+      return;
+    }
+
+    isSpinning = true;
+    spinBtn.disabled = true;
+    resultPanel.classList.add("empty");
+    winnerText.textContent = "Spinning…";
+
+    const n = options.length;
+    const sliceAngle = (Math.PI * 2) / n;
+
+    // Pick the winning slice up front, then compute the exact end rotation
+    // that lands that slice's center under the pointer. This guarantees the
+    // visual stop and the reported result always agree.
+    const winningIndex = Math.floor(Math.random() * n);
+
+    // Rotation needed so winningIndex's center aligns with pointer (-PI/2):
+    // pointerAngle = rotationEnd + winningIndex*sliceAngle + sliceAngle/2 (mod 2PI)
+    // => rotationEnd = pointerAngle - (winningIndex + 0.5) * sliceAngle (mod 2PI)
+    const targetWithinTurn = (((-Math.PI / 2) - (winningIndex + 0.5) * sliceAngle) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+
+    const extraTurns = prefersReducedMotion.matches ? 2 : (6 + Math.floor(Math.random() * 3)); // 6-8 full turns
+    const startRotation = currentRotation;
+    // Ensure we always spin forward by a full number of turns plus the offset needed.
+    const currentWithinTurn = ((startRotation % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+    let delta = targetWithinTurn - currentWithinTurn;
+    delta = ((delta % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+    const endRotation = startRotation + extraTurns * Math.PI * 2 + delta;
+
+    const duration = prefersReducedMotion.matches ? 900 : 5200; // ms
+    const startTime = performance.now();
+
+    function frame(now) {
+      const elapsed = now - startTime;
+      const t = Math.min(elapsed / duration, 1);
+      const eased = easeOutCubic(t);
+      currentRotation = startRotation + (endRotation - startRotation) * eased;
+      drawWheel(currentRotation);
+
+      if (t < 1) {
+        animationId = requestAnimationFrame(frame);
+      } else {
+        currentRotation = endRotation;
+        drawWheel(currentRotation);
+        finishSpin(winningIndex);
+      }
+    }
+
+    animationId = requestAnimationFrame(frame);
+  }
+
+  function finishSpin(expectedIndex) {
+    isSpinning = false;
+    spinBtn.disabled = false;
+    // Cross-check against geometry to guarantee consistency, then report.
+    const actualIndex = getWinningIndex(currentRotation);
+    const winner = options[actualIndex] !== undefined ? options[actualIndex] : options[expectedIndex];
+    showResult(winner, null);
+  }
+
+  function showResult(winnerLabel, message) {
+    if (message) {
+      resultPanel.classList.add("empty");
+      winnerText.textContent = message;
+      return;
+    }
+    resultPanel.classList.remove("empty");
+    winnerText.textContent = winnerLabel;
+  }
+
+  /* ============================================================
+     DOM references
+     ============================================================ */
+  const spinBtn = document.getElementById("spinBtn");
+  const resultPanel = document.getElementById("resultPanel");
+  const winnerText = document.getElementById("winnerText");
+
+  const editOpenBtn = document.getElementById("editOpenBtn");
+  const editorOverlay = document.getElementById("editorOverlay");
+  const optionsListEl = document.getElementById("optionsList");
+  const newOptionInput = document.getElementById("newOptionInput");
+  const addOptionBtn = document.getElementById("addOptionBtn");
+  const saveBtn = document.getElementById("saveBtn");
+  const cancelBtn = document.getElementById("cancelBtn");
+  const resetBtn = document.getElementById("resetBtn");
+  const formError = document.getElementById("formError");
+
+  spinBtn.addEventListener("click", spin);
+
+  /* ============================================================
+     Editor modal: open/close
+     ============================================================ */
+  let lastFocusedElement = null;
+
+  function openEditor() {
+    editingOptions = options.slice(); // work on a copy so Cancel is truly non-destructive
+    formError.textContent = "";
+    newOptionInput.value = "";
+    renderEditorList();
+    editorOverlay.classList.add("open");
+    lastFocusedElement = document.activeElement;
+    newOptionInput.focus();
+    document.addEventListener("keydown", onModalKeydown);
+  }
+
+  function closeEditor() {
+    editorOverlay.classList.remove("open");
+    document.removeEventListener("keydown", onModalKeydown);
+    if (lastFocusedElement) lastFocusedElement.focus();
+  }
+
+  function onModalKeydown(e) {
+    if (e.key === "Escape") {
+      closeEditor();
+    }
+  }
+
+  editOpenBtn.addEventListener("click", openEditor);
+  cancelBtn.addEventListener("click", closeEditor);
+  editorOverlay.addEventListener("click", (e) => {
+    if (e.target === editorOverlay) closeEditor();
+  });
+
+  /* ============================================================
+     Editor list rendering (CRUD)
+     ============================================================ */
+  function renderEditorList() {
+    optionsListEl.innerHTML = "";
+    editingOptions.forEach((text, idx) => {
+      const li = document.createElement("li");
+
+      const swatch = document.createElement("span");
+      swatch.className = "swatch";
+      swatch.style.background = PALETTE[idx % PALETTE.length];
+      swatch.setAttribute("aria-hidden", "true");
+
+      const input = document.createElement("input");
+      input.type = "text";
+      input.value = text;
+      input.maxLength = 60;
+      input.setAttribute("aria-label", "Option " + (idx + 1) + " text");
+      input.addEventListener("input", () => {
+        editingOptions[idx] = input.value;
+      });
+
+      const upBtn = document.createElement("button");
+      upBtn.type = "button";
+      upBtn.className = "icon-btn move";
+      upBtn.innerHTML = "&#8593;";
+      upBtn.setAttribute("aria-label", "Move option " + (idx + 1) + " up");
+      upBtn.disabled = idx === 0;
+      upBtn.addEventListener("click", () => {
+        if (idx > 0) {
+          [editingOptions[idx - 1], editingOptions[idx]] = [editingOptions[idx], editingOptions[idx - 1]];
+          renderEditorList();
+        }
+      });
+
+      const downBtn = document.createElement("button");
+      downBtn.type = "button";
+      downBtn.className = "icon-btn move";
+      downBtn.innerHTML = "&#8595;";
+      downBtn.setAttribute("aria-label", "Move option " + (idx + 1) + " down");
+      downBtn.disabled = idx === editingOptions.length - 1;
+      downBtn.addEventListener("click", () => {
+        if (idx < editingOptions.length - 1) {
+          [editingOptions[idx + 1], editingOptions[idx]] = [editingOptions[idx], editingOptions[idx + 1]];
+          renderEditorList();
+        }
+      });
+
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "icon-btn delete";
+      delBtn.innerHTML = "&#10005;";
+      delBtn.setAttribute("aria-label", "Delete option: " + text);
+      delBtn.addEventListener("click", () => {
+        editingOptions.splice(idx, 1);
+        renderEditorList();
+      });
+
+      li.appendChild(swatch);
+      li.appendChild(input);
+      li.appendChild(upBtn);
+      li.appendChild(downBtn);
+      li.appendChild(delBtn);
+      optionsListEl.appendChild(li);
+    });
+
+    if (editingOptions.length === 0) {
+      const empty = document.createElement("li");
+      empty.style.justifyContent = "center";
+      empty.style.color = "#5A5A5A";
+      empty.textContent = "No options yet — add one below.";
+      optionsListEl.appendChild(empty);
+    }
+  }
+
+  function addOption() {
+    const value = newOptionInput.value.trim();
+    if (!value) {
+      formError.textContent = "Option text cannot be blank.";
+      newOptionInput.focus();
+      return;
+    }
+    formError.textContent = "";
+    editingOptions.push(value);
+    newOptionInput.value = "";
+    renderEditorList();
+    newOptionInput.focus();
+  }
+
+  addOptionBtn.addEventListener("click", addOption);
+  newOptionInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addOption();
+    }
+  });
+
+  function saveEditor() {
+    // Validation: no blanks, at least 2 options.
+    const cleaned = editingOptions.map(o => o.trim()).filter(o => o.length > 0);
+
+    if (cleaned.length !== editingOptions.length) {
+      formError.textContent = "Blank options are not allowed. Remove or fill them in.";
+      return;
+    }
+    if (cleaned.length < 2) {
+      formError.textContent = "At least 2 options are required to spin.";
+      return;
+    }
+
+    formError.textContent = "";
+    options = cleaned;
+    saveOptions(options);
+    currentRotation = 0;
+    drawWheel(currentRotation);
+    resultPanel.classList.add("empty");
+    winnerText.textContent = "Spin the wheel to see your result!";
+    closeEditor();
+  }
+
+  saveBtn.addEventListener("click", saveEditor);
+
+  function resetToDefaults() {
+    editingOptions = DEFAULT_OPTIONS.slice();
+    formError.textContent = "";
+    renderEditorList();
+  }
+
+  resetBtn.addEventListener("click", resetToDefaults);
+
+  /* ============================================================
+     Init
+     ============================================================ */
+  function init() {
+    drawWheel(currentRotation);
+  }
+
+  window.addEventListener("resize", () => drawWheel(currentRotation));
+
+  init();
+})();
+</script>
+</body>
+</html>
