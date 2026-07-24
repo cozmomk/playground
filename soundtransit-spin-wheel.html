@@ -226,6 +226,25 @@
 
   .result-panel.empty .label { color: var(--railway-gray); }
 
+  /* Grand prize result styling */
+  .result-panel.grand-prize {
+    background: linear-gradient(135deg, var(--action-orange), var(--hilite-yellow));
+    color: var(--wave-blue);
+    box-shadow: 0 0 0 3px var(--wave-blue), 0 6px 18px rgba(243,139,0,0.5);
+  }
+
+  .result-panel.grand-prize .label { color: var(--wave-blue); }
+
+  /* Full-screen confetti overlay */
+  #confettiCanvas {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 40;
+  }
+
   /* ===== Edit link (bottom-left) ===== */
   .edit-link {
     position: fixed;
@@ -339,6 +358,9 @@
 
   .icon-btn.delete { color: var(--action-pink); }
 
+  .icon-btn.trophy { color: #c9c9c9; }
+  .icon-btn.trophy.active { color: var(--action-orange); }
+
   /* Drag handle for reordering options */
   .drag-handle {
     background: none;
@@ -361,6 +383,72 @@
     outline: 2px dashed var(--wave-teal);
     outline-offset: -2px;
   }
+
+  /* ===== Grand Prize section ===== */
+  .grand-prize-section {
+    border-top: 1px solid #e2e6ea;
+    margin-top: 1rem;
+    padding-top: 1rem;
+  }
+
+  .grand-prize-section h3 {
+    margin: 0 0 0.15rem;
+    font-size: 1rem;
+    color: var(--wave-blue);
+  }
+
+  .grand-prize-section p.hint {
+    margin: 0 0 0.6rem;
+  }
+
+  #grandPrizeZone {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 3rem;
+    border: 2px dashed var(--hilite-yellow);
+    border-radius: 12px;
+    background: #FFF9EC;
+    padding: 0.6rem;
+  }
+
+  #grandPrizeZone.drag-over {
+    border-color: var(--action-orange);
+    background: #FFF1D6;
+  }
+
+  .grand-prize-empty {
+    margin: 0;
+    color: var(--railway-gray);
+    font-size: 0.85rem;
+  }
+
+  .grand-prize-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--action-orange);
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.85rem;
+    border-radius: 999px;
+    padding: 0.3rem 0.4rem 0.3rem 0.75rem;
+  }
+
+  .grand-prize-chip .chip-remove {
+    background: rgba(255,255,255,0.25);
+    border: none;
+    color: #fff;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    line-height: 1;
+    cursor: pointer;
+    font-size: 0.75rem;
+  }
+
+  .grand-prize-chip .chip-remove:hover { background: rgba(255,255,255,0.45); }
 
   .modal-actions {
     display: flex;
@@ -473,6 +561,8 @@
   <footer class="note">Sound Transit Spin Wheel &mdash; for fun/demo purposes only. Not an official Sound Transit product.</footer>
 </main>
 
+<canvas id="confettiCanvas" aria-hidden="true"></canvas>
+
 <button class="edit-link" id="editOpenBtn" type="button" aria-haspopup="dialog" aria-controls="editorModal">Edit</button>
 
 <!-- ===== Options editor modal ===== -->
@@ -491,6 +581,12 @@
 
     <ul id="optionsList" aria-label="Current wheel options"></ul>
 
+    <div class="grand-prize-section">
+      <h3>&#127942; Grand Prize</h3>
+      <p class="hint">Drag an option's handle here, or tap its trophy icon, to mark it as a grand prize. Landing on one triggers a confetti celebration.</p>
+      <div id="grandPrizeZone" aria-label="Grand prize options"></div>
+    </div>
+
     <div class="modal-actions">
       <button class="btn btn-primary" id="saveBtn" type="button">Save Changes</button>
       <button class="btn btn-outline" id="cancelBtn" type="button">Cancel</button>
@@ -508,7 +604,7 @@
      ============================================================ */
   const STORAGE_KEY = "st-spin-wheel-options-v1";
 
-  const DEFAULT_OPTIONS = [
+  const DEFAULT_OPTION_TEXTS = [
     "Better luck next spin",
     "Spin again",
     "ST Store Discount Code",
@@ -530,6 +626,31 @@
     "#FFB819"  // Hi-Lite Yellow (paired with dark text)
   ];
 
+  // Options are { id, text, grandPrize }. The id gives each option a stable
+  // identity across edits/reorders so "grand prize" marking survives text changes.
+  function makeId() {
+    return window.crypto && crypto.randomUUID
+      ? crypto.randomUUID()
+      : "opt-" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+  }
+
+  function buildDefaultOptions() {
+    return DEFAULT_OPTION_TEXTS.map(text => ({ id: makeId(), text, grandPrize: false }));
+  }
+
+  // Accepts either a legacy plain string (pre-grand-prize storage format) or
+  // an already-shaped option object, and normalizes to the current shape.
+  function normalizeOption(o) {
+    if (typeof o === "string") {
+      return { id: makeId(), text: o, grandPrize: false };
+    }
+    return {
+      id: (o && typeof o.id === "string") ? o.id : makeId(),
+      text: (o && typeof o.text === "string") ? o.text : "",
+      grandPrize: !!(o && o.grandPrize)
+    };
+  }
+
   let options = loadOptions();          // live options driving the wheel
   let editingOptions = [];              // working copy used inside the modal
   let currentRotation = 0;              // radians, current wheel rotation
@@ -545,14 +666,15 @@
   function loadOptions() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return DEFAULT_OPTIONS.slice();
+      if (!raw) return buildDefaultOptions();
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length >= 2) {
-        return parsed.filter(o => typeof o === "string" && o.trim().length > 0);
+        const normalized = parsed.map(normalizeOption).filter(o => o.text.trim().length > 0);
+        return normalized.length >= 2 ? normalized : buildDefaultOptions();
       }
-      return DEFAULT_OPTIONS.slice();
+      return buildDefaultOptions();
     } catch (e) {
-      return DEFAULT_OPTIONS.slice();
+      return buildDefaultOptions();
     }
   }
 
@@ -637,7 +759,7 @@
       ctx.rotate(midAngle);
 
       const maxChars = n <= 6 ? 16 : n <= 10 ? 13 : 10;
-      const lines = wrapText(options[i], maxChars);
+      const lines = wrapText(options[i].text, maxChars);
       const fontSize = n <= 6 ? 20 : n <= 10 ? 17 : 14;
       ctx.font = "700 " + fontSize + "px Segoe UI, sans-serif";
       ctx.textAlign = "right";
@@ -653,6 +775,131 @@
       ctx.restore();
     }
   }
+
+  /* ============================================================
+     Confetti celebration (grand prize wins)
+     ============================================================ */
+  const confettiCanvas = document.getElementById("confettiCanvas");
+  const confettiCtx = confettiCanvas.getContext("2d");
+  const CONFETTI_BUCKET_WIDTH = 22; // px; columns used to stack a realistic pile at the bottom
+  let confettiPieces = [];
+  let confettiBucketHeights = [];
+  let confettiAnimId = null;
+
+  function resizeConfettiCanvas() {
+    const dpr = window.devicePixelRatio || 1;
+    confettiCanvas.width = Math.round(window.innerWidth * dpr);
+    confettiCanvas.height = Math.round(window.innerHeight * dpr);
+    confettiCanvas.style.width = window.innerWidth + "px";
+    confettiCanvas.style.height = window.innerHeight + "px";
+    confettiCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    confettiBucketHeights = new Array(Math.ceil(window.innerWidth / CONFETTI_BUCKET_WIDTH) + 1).fill(0);
+  }
+
+  // Wipes any current confetti burst/pile. Called when a new spin starts,
+  // per spec: the pile persists only until the user spins again.
+  function clearConfetti() {
+    confettiPieces = [];
+    if (confettiAnimId) cancelAnimationFrame(confettiAnimId);
+    confettiAnimId = null;
+    confettiBucketHeights.fill(0);
+    confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+  }
+
+  // Fast to appear, gently decelerating into the pile — reads as a soft
+  // landing rather than a sudden accelerating drop.
+  function easeOutQuad(t) {
+    return 1 - (1 - t) * (1 - t);
+  }
+
+  function triggerConfetti() {
+    clearConfetti();
+    const reduced = prefersReducedMotion.matches;
+    const count = reduced ? 50 : 160;
+    const fallDuration = reduced ? 700 : 3000; // ms; each piece's own fall takes ~3s
+    const maxStagger = reduced ? 60 : 200;     // ms burst spread so the drop feels natural
+    const spawnBase = performance.now();
+
+    for (let i = 0; i < count; i++) {
+      const size = 6 + Math.random() * 7;
+      const startX = Math.random() * window.innerWidth;
+      const bucketIndex = Math.min(confettiBucketHeights.length - 1, Math.floor(startX / CONFETTI_BUCKET_WIDTH));
+      // Reserve this piece's resting spot in the pile now, so pieces landing
+      // in the same column stack on top of each other instead of overlapping.
+      const landY = window.innerHeight - confettiBucketHeights[bucketIndex] - size;
+      confettiBucketHeights[bucketIndex] += size * 0.85;
+
+      confettiPieces.push({
+        x: startX,
+        startY: -20 - Math.random() * 60,
+        landY,
+        size,
+        color: PALETTE[Math.floor(Math.random() * PALETTE.length)],
+        shape: Math.random() < 0.5 ? "rect" : "circle",
+        rotation: Math.random() * Math.PI * 2,
+        spinRate: (Math.random() - 0.5) * 8, // radians/sec
+        sway: 8 + Math.random() * 18,
+        swaySpeed: 1 + Math.random() * 2,
+        spawnTime: spawnBase + Math.random() * maxStagger,
+        fallDuration
+      });
+    }
+
+    animateConfetti();
+  }
+
+  function drawConfettiPiece(x, y, size, color, shape, rotation) {
+    confettiCtx.save();
+    confettiCtx.translate(x, y);
+    confettiCtx.rotate(rotation);
+    confettiCtx.fillStyle = color;
+    if (shape === "circle") {
+      confettiCtx.beginPath();
+      confettiCtx.arc(0, 0, size / 2, 0, Math.PI * 2);
+      confettiCtx.fill();
+    } else {
+      confettiCtx.fillRect(-size / 2, -size / 4, size, size / 2);
+    }
+    confettiCtx.restore();
+  }
+
+  function animateConfetti() {
+    const now = performance.now();
+    confettiCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+    let stillAnimating = false;
+
+    confettiPieces.forEach(p => {
+      if (now < p.spawnTime) {
+        stillAnimating = true;
+        return; // hasn't started falling yet
+      }
+      const elapsed = now - p.spawnTime;
+      const t = Math.min(elapsed / p.fallDuration, 1);
+      const eased = easeOutQuad(t);
+      const y = p.startY + (p.landY - p.startY) * eased;
+
+      // Sway and spin freeze naturally as the piece settles (t -> 1).
+      const cappedElapsed = Math.min(elapsed, p.fallDuration);
+      const sway = Math.sin((elapsed / 1000) * p.swaySpeed * Math.PI * 2) * p.sway * (1 - eased);
+      const x = p.x + sway;
+      const rotation = p.rotation + (cappedElapsed / 1000) * p.spinRate;
+
+      drawConfettiPiece(x, y, p.size, p.color, p.shape, rotation);
+
+      if (t < 1) stillAnimating = true;
+    });
+
+    if (stillAnimating) {
+      confettiAnimId = requestAnimationFrame(animateConfetti);
+    } else {
+      confettiAnimId = null; // fully settled; leave the final pile frame drawn and stop looping
+    }
+  }
+
+  window.addEventListener("resize", () => {
+    resizeConfettiCanvas();
+    clearConfetti();
+  });
 
   /* ============================================================
      Spin logic
@@ -684,8 +931,13 @@
       return;
     }
 
+    // Any confetti pile from a previous grand-prize win persists only until
+    // the next spin, per spec — clear it as soon as a new spin starts.
+    clearConfetti();
+
     isSpinning = true;
     spinBtn.disabled = true;
+    resultPanel.classList.remove("grand-prize");
     resultPanel.classList.add("empty");
     winnerText.textContent = "Spinning…";
 
@@ -738,12 +990,16 @@
     // Cross-check against geometry to guarantee consistency, then report.
     const actualIndex = getWinningIndex(currentRotation);
     const winner = options[actualIndex] !== undefined ? options[actualIndex] : options[expectedIndex];
-    showResult(winner, null);
+    const isGrandPrize = !!winner.grandPrize;
+    resultPanel.classList.toggle("grand-prize", isGrandPrize);
+    showResult((isGrandPrize ? "\u{1F3C6} " : "") + winner.text, null);
+    if (isGrandPrize) triggerConfetti();
   }
 
   function showResult(winnerLabel, message) {
     if (message) {
       resultPanel.classList.add("empty");
+      resultPanel.classList.remove("grand-prize");
       winnerText.textContent = message;
       return;
     }
@@ -761,6 +1017,7 @@
   const editOpenBtn = document.getElementById("editOpenBtn");
   const editorOverlay = document.getElementById("editorOverlay");
   const optionsListEl = document.getElementById("optionsList");
+  const grandPrizeZoneEl = document.getElementById("grandPrizeZone");
   const newOptionInput = document.getElementById("newOptionInput");
   const addOptionBtn = document.getElementById("addOptionBtn");
   const saveBtn = document.getElementById("saveBtn");
@@ -769,6 +1026,22 @@
   const formError = document.getElementById("formError");
 
   spinBtn.addEventListener("click", spin);
+
+  // The Grand Prize zone is a persistent drop target: dragging any option's
+  // handle here marks that option as a grand prize (see per-row drag handlers below).
+  grandPrizeZoneEl.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    grandPrizeZoneEl.classList.add("drag-over");
+  });
+  grandPrizeZoneEl.addEventListener("dragleave", () => grandPrizeZoneEl.classList.remove("drag-over"));
+  grandPrizeZoneEl.addEventListener("drop", (e) => {
+    e.preventDefault();
+    grandPrizeZoneEl.classList.remove("drag-over");
+    if (dragSrcIndex === null || !editingOptions[dragSrcIndex]) return;
+    editingOptions[dragSrcIndex].grandPrize = true;
+    renderEditorList();
+  });
 
   /* ============================================================
      Editor modal: open/close
@@ -819,18 +1092,19 @@
 
   function renderEditorList() {
     optionsListEl.innerHTML = "";
-    editingOptions.forEach((text, idx) => {
+    editingOptions.forEach((opt, idx) => {
       const li = document.createElement("li");
       li.dataset.index = String(idx);
 
       // Drag handle: dragging is only initiated from this handle (not the
-      // whole row), so text inputs remain freely selectable/editable.
+      // whole row), so text inputs remain freely selectable/editable. Dropping
+      // on another row reorders; dropping on the Grand Prize zone marks it.
       const handle = document.createElement("button");
       handle.type = "button";
       handle.className = "drag-handle";
       handle.draggable = true;
       handle.innerHTML = "&#9776;";
-      handle.setAttribute("aria-label", "Reorder option: " + text + ". Drag to move, or use arrow keys while focused.");
+      handle.setAttribute("aria-label", "Reorder option: " + opt.text + ". Drag to move or drop on Grand Prize, or use arrow keys while focused.");
 
       handle.addEventListener("dragstart", (e) => {
         dragSrcIndex = idx;
@@ -843,6 +1117,7 @@
         optionsListEl.querySelectorAll("li").forEach(el => {
           el.classList.remove("dragging", "drag-over");
         });
+        grandPrizeZoneEl.classList.remove("drag-over");
       });
       handle.addEventListener("keydown", (e) => {
         if (e.key === "ArrowUp" && idx > 0) {
@@ -875,18 +1150,36 @@
 
       const input = document.createElement("input");
       input.type = "text";
-      input.value = text;
+      input.value = opt.text;
       input.maxLength = 60;
       input.setAttribute("aria-label", "Option " + (idx + 1) + " text");
       input.addEventListener("input", () => {
-        editingOptions[idx] = input.value;
+        editingOptions[idx].text = input.value;
+        // Update the matching Grand Prize chip's label live, without a full
+        // list re-render, so the text input never loses focus mid-keystroke.
+        if (editingOptions[idx].grandPrize) {
+          const chipLabel = grandPrizeZoneEl.querySelector('[data-id="' + opt.id + '"] .chip-text');
+          if (chipLabel) chipLabel.textContent = "\u{1F3C6} " + input.value;
+        }
+      });
+
+      // Keyboard/tap-friendly alternative to dragging: toggles Grand Prize status.
+      const trophyBtn = document.createElement("button");
+      trophyBtn.type = "button";
+      trophyBtn.className = "icon-btn trophy" + (opt.grandPrize ? " active" : "");
+      trophyBtn.innerHTML = "&#127942;";
+      trophyBtn.setAttribute("aria-pressed", opt.grandPrize ? "true" : "false");
+      trophyBtn.setAttribute("aria-label", (opt.grandPrize ? "Remove " : "Add ") + opt.text + (opt.grandPrize ? " from" : " to") + " Grand Prize");
+      trophyBtn.addEventListener("click", () => {
+        editingOptions[idx].grandPrize = !editingOptions[idx].grandPrize;
+        renderEditorList();
       });
 
       const delBtn = document.createElement("button");
       delBtn.type = "button";
       delBtn.className = "icon-btn delete";
       delBtn.innerHTML = "&#10005;";
-      delBtn.setAttribute("aria-label", "Delete option: " + text);
+      delBtn.setAttribute("aria-label", "Delete option: " + opt.text);
       delBtn.addEventListener("click", () => {
         editingOptions.splice(idx, 1);
         renderEditorList();
@@ -895,6 +1188,7 @@
       li.appendChild(handle);
       li.appendChild(swatch);
       li.appendChild(input);
+      li.appendChild(trophyBtn);
       li.appendChild(delBtn);
       optionsListEl.appendChild(li);
     });
@@ -906,6 +1200,46 @@
       empty.textContent = "No options yet — add one below.";
       optionsListEl.appendChild(empty);
     }
+
+    renderGrandPrizeZone();
+  }
+
+  function renderGrandPrizeZone() {
+    grandPrizeZoneEl.innerHTML = "";
+    const winners = editingOptions.filter(o => o.grandPrize);
+
+    if (winners.length === 0) {
+      const empty = document.createElement("p");
+      empty.className = "grand-prize-empty";
+      empty.textContent = "No grand prizes yet.";
+      grandPrizeZoneEl.appendChild(empty);
+      return;
+    }
+
+    winners.forEach(opt => {
+      const chip = document.createElement("span");
+      chip.className = "grand-prize-chip";
+      chip.dataset.id = opt.id;
+
+      const label = document.createElement("span");
+      label.className = "chip-text";
+      label.textContent = "\u{1F3C6} " + opt.text;
+
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.className = "chip-remove";
+      removeBtn.innerHTML = "&#10005;";
+      removeBtn.setAttribute("aria-label", "Remove " + opt.text + " from Grand Prize");
+      removeBtn.addEventListener("click", () => {
+        const target = editingOptions.find(o => o.id === opt.id);
+        if (target) target.grandPrize = false;
+        renderEditorList();
+      });
+
+      chip.appendChild(label);
+      chip.appendChild(removeBtn);
+      grandPrizeZoneEl.appendChild(chip);
+    });
   }
 
   function addOption() {
@@ -916,7 +1250,7 @@
       return;
     }
     formError.textContent = "";
-    editingOptions.push(value);
+    editingOptions.push({ id: makeId(), text: value, grandPrize: false });
     newOptionInput.value = "";
     renderEditorList();
     newOptionInput.focus();
@@ -932,7 +1266,9 @@
 
   function saveEditor() {
     // Validation: no blanks, at least 2 options.
-    const cleaned = editingOptions.map(o => o.trim()).filter(o => o.length > 0);
+    const cleaned = editingOptions
+      .map(o => ({ id: o.id, text: o.text.trim(), grandPrize: o.grandPrize }))
+      .filter(o => o.text.length > 0);
 
     if (cleaned.length !== editingOptions.length) {
       formError.textContent = "Blank options are not allowed. Remove or fill them in.";
@@ -948,6 +1284,8 @@
     saveOptions(options);
     currentRotation = 0;
     drawWheel(currentRotation);
+    clearConfetti();
+    resultPanel.classList.remove("grand-prize");
     resultPanel.classList.add("empty");
     winnerText.textContent = "Spin the wheel to see your result!";
     closeEditor();
@@ -956,7 +1294,7 @@
   saveBtn.addEventListener("click", saveEditor);
 
   function resetToDefaults() {
-    editingOptions = DEFAULT_OPTIONS.slice();
+    editingOptions = buildDefaultOptions();
     formError.textContent = "";
     renderEditorList();
   }
@@ -967,6 +1305,7 @@
      Init
      ============================================================ */
   function init() {
+    resizeConfettiCanvas();
     drawWheel(currentRotation);
   }
 
