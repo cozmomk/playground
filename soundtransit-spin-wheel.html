@@ -265,6 +265,89 @@
 
   .edit-link:hover { background: #001f4d; }
 
+  /* ===== Stats link (bottom-right), mirrors Edit link ===== */
+  .stats-link {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    background: var(--wave-teal);
+    color: #fff;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 0.9rem;
+    padding: 0.6rem 1.1rem;
+    border-radius: 999px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+    border: 2px solid var(--hilite-yellow);
+    cursor: pointer;
+    z-index: 20;
+  }
+
+  .stats-link:hover { background: #00655f; }
+
+  /* ===== Stats modal contents ===== */
+  .stats-total {
+    margin: 0 0 0.75rem;
+    font-weight: 700;
+    color: var(--wave-blue);
+    font-size: 0.9rem;
+  }
+
+  .stats-list {
+    list-style: none;
+    margin: 0 0 0.5rem;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    max-height: 45vh;
+    overflow-y: auto;
+  }
+
+  .stats-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: var(--bg-light);
+    border-radius: 10px;
+    padding: 0.5rem 0.7rem;
+  }
+
+  .stats-row .swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
+  }
+
+  .stats-row .stats-label {
+    flex: 1;
+    font-weight: 600;
+    color: var(--wave-blue);
+    min-width: 0;
+    overflow-wrap: break-word;
+  }
+
+  .stats-row.removed .stats-label {
+    color: var(--railway-gray);
+    font-style: italic;
+  }
+
+  .stats-row .stats-count {
+    font-weight: 700;
+    color: var(--wave-teal);
+    white-space: nowrap;
+  }
+
+  .stats-confirm {
+    color: var(--action-pink);
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin: 0 0 0.5rem;
+  }
+
   /* ===== Modal / editor ===== */
   .modal-overlay {
     position: fixed;
@@ -633,6 +716,27 @@
   </div>
 </div>
 
+<button class="stats-link" id="statsOpenBtn" type="button" aria-haspopup="dialog" aria-controls="statsModal">Stats</button>
+
+<!-- ===== Win statistics modal ===== -->
+<div class="modal-overlay" id="statsOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="statsTitle" id="statsModal">
+    <h2 id="statsTitle">Spin Statistics</h2>
+    <p class="hint">How often each option has come up, saved on this device.</p>
+    <p class="stats-total" id="statsTotal"></p>
+
+    <ul id="statsList" class="stats-list" aria-label="Win counts per option"></ul>
+
+    <p class="stats-confirm" id="statsConfirmText" hidden>This permanently erases all recorded spin stats. This cannot be undone.</p>
+
+    <div class="modal-actions">
+      <button class="btn btn-danger-outline" id="resetStatsBtn" type="button">Reset Stats</button>
+      <button class="btn btn-outline" id="cancelResetStatsBtn" type="button" hidden>Cancel</button>
+      <button class="btn btn-outline" id="closeStatsBtn" type="button">Close</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (function () {
   "use strict";
@@ -641,6 +745,7 @@
      Config & state
      ============================================================ */
   const STORAGE_KEY = "st-spin-wheel-options-v1";
+  const STATS_KEY = "st-spin-wheel-stats-v1";
 
   const DEFAULT_OPTION_TEXTS = [
     "Better luck next spin",
@@ -751,10 +856,12 @@
 
   let options = loadOptions();          // live options driving the wheel
   let editingOptions = [];              // working copy used inside the modal
+  let stats = loadStats();              // { [optionId]: { text, count } }, persisted win history
   let currentRotation = 0;              // radians, current wheel rotation
   let isSpinning = false;
   let animationId = null;
   let dragSrcId = null;                 // id of the option currently being dragged in the editor
+  let statsResetPending = false;        // true while the stats "are you sure" confirm is showing
 
   const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
@@ -778,6 +885,31 @@
 
   function saveOptions(opts) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(opts));
+  }
+
+  // Win stats are keyed by option id (so renaming an option keeps its
+  // history) and cache the option's text at last-recorded time, so a
+  // since-deleted option still shows a meaningful label.
+  function loadStats() {
+    try {
+      const raw = localStorage.getItem(STATS_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      return (parsed && typeof parsed === "object" && !Array.isArray(parsed)) ? parsed : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function saveStats() {
+    localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+  }
+
+  function recordWin(option) {
+    const entry = stats[option.id] || { text: option.text, count: 0 };
+    entry.text = option.text; // keep the cached label current while the option still exists
+    entry.count += 1;
+    stats[option.id] = entry;
+    saveStats();
   }
 
   /* ============================================================
@@ -1088,6 +1220,7 @@
     const actualIndex = getWinningIndex(currentRotation);
     const winner = options[actualIndex] !== undefined ? options[actualIndex] : options[expectedIndex];
     const isGrandPrize = !!winner.grandPrize;
+    recordWin(winner);
     resultPanel.classList.toggle("grand-prize", isGrandPrize);
     showResult((isGrandPrize ? "\u{1F3C6} " : "") + winner.text, null);
     if (isGrandPrize) triggerConfetti();
@@ -1489,6 +1622,116 @@
   }
 
   resetBtn.addEventListener("click", resetToDefaults);
+
+  /* ============================================================
+     Stats modal: win frequency per option, saved on this device
+     ============================================================ */
+  const statsOpenBtn = document.getElementById("statsOpenBtn");
+  const statsOverlay = document.getElementById("statsOverlay");
+  const statsListEl = document.getElementById("statsList");
+  const statsTotalEl = document.getElementById("statsTotal");
+  const statsConfirmText = document.getElementById("statsConfirmText");
+  const resetStatsBtn = document.getElementById("resetStatsBtn");
+  const cancelResetStatsBtn = document.getElementById("cancelResetStatsBtn");
+  const closeStatsBtn = document.getElementById("closeStatsBtn");
+
+  let lastFocusedElementStats = null;
+
+  function renderStatsList() {
+    statsListEl.innerHTML = "";
+
+    const entries = Object.keys(stats).map(id => ({ id, text: stats[id].text, count: stats[id].count }));
+    entries.sort((a, b) => b.count - a.count);
+    const totalSpins = entries.reduce((sum, e) => sum + e.count, 0);
+    statsTotalEl.textContent = "Total spins recorded: " + totalSpins;
+
+    if (entries.length === 0) {
+      const empty = document.createElement("li");
+      empty.className = "option-row-empty";
+      empty.textContent = "No spins recorded yet.";
+      statsListEl.appendChild(empty);
+      return;
+    }
+
+    entries.forEach(e => {
+      const li = document.createElement("li");
+      const liveOption = options.find(o => o.id === e.id);
+      li.className = "stats-row" + (liveOption ? "" : " removed");
+
+      const swatch = document.createElement("span");
+      swatch.className = "swatch";
+      swatch.style.background = liveOption
+        ? (liveOption.color || PALETTE[options.indexOf(liveOption) % PALETTE.length])
+        : "#cfd6dd";
+      swatch.setAttribute("aria-hidden", "true");
+
+      const label = document.createElement("span");
+      label.className = "stats-label";
+      label.textContent = e.text + (liveOption ? "" : " (removed)");
+
+      const count = document.createElement("span");
+      count.className = "stats-count";
+      const pct = totalSpins > 0 ? Math.round((e.count / totalSpins) * 100) : 0;
+      count.textContent = e.count + " win" + (e.count === 1 ? "" : "s") + " (" + pct + "%)";
+
+      li.appendChild(swatch);
+      li.appendChild(label);
+      li.appendChild(count);
+      statsListEl.appendChild(li);
+    });
+  }
+
+  function setStatsResetPending(pending) {
+    statsResetPending = pending;
+    statsConfirmText.hidden = !pending;
+    cancelResetStatsBtn.hidden = !pending;
+    closeStatsBtn.hidden = pending;
+    resetStatsBtn.textContent = pending ? "Yes, reset stats" : "Reset Stats";
+  }
+
+  function openStats() {
+    setStatsResetPending(false);
+    renderStatsList();
+    statsOverlay.classList.add("open");
+    lastFocusedElementStats = document.activeElement;
+    resetStatsBtn.focus();
+    document.addEventListener("keydown", onStatsModalKeydown);
+  }
+
+  function closeStats() {
+    statsOverlay.classList.remove("open");
+    setStatsResetPending(false);
+    document.removeEventListener("keydown", onStatsModalKeydown);
+    if (lastFocusedElementStats) lastFocusedElementStats.focus();
+  }
+
+  function onStatsModalKeydown(e) {
+    if (e.key === "Escape") {
+      if (statsResetPending) {
+        setStatsResetPending(false);
+        return;
+      }
+      closeStats();
+    }
+  }
+
+  statsOpenBtn.addEventListener("click", openStats);
+  closeStatsBtn.addEventListener("click", closeStats);
+  cancelResetStatsBtn.addEventListener("click", () => setStatsResetPending(false));
+  statsOverlay.addEventListener("click", (e) => {
+    if (e.target === statsOverlay) closeStats();
+  });
+
+  resetStatsBtn.addEventListener("click", () => {
+    if (!statsResetPending) {
+      setStatsResetPending(true);
+      return;
+    }
+    stats = {};
+    saveStats();
+    setStatsResetPending(false);
+    renderStatsList();
+  });
 
   /* ============================================================
      Init
