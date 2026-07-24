@@ -302,16 +302,18 @@
     font-size: 0.85rem;
   }
 
-  #optionsList {
+  /* Shared row list styling, used by both the Options list and the
+     Grand Prize list — dragging moves a row between the two. */
+  .option-rows {
     list-style: none;
-    margin: 0 0 1rem;
+    margin: 0;
     padding: 0;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
   }
 
-  #optionsList li {
+  .option-row {
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -320,7 +322,7 @@
     padding: 0.4rem 0.5rem;
   }
 
-  #optionsList input[type="text"] {
+  .option-row input[type="text"] {
     flex: 1;
     border: 1px solid #cfd6dd;
     border-radius: 8px;
@@ -330,8 +332,23 @@
     min-width: 0;
   }
 
-  #optionsList input[type="text"]:focus {
+  .option-row input[type="text"]:focus {
     border-color: var(--wave-teal);
+  }
+
+  .option-row.dragging { opacity: 0.35; }
+
+  .option-row.drag-over {
+    outline: 2px dashed var(--wave-teal);
+    outline-offset: -2px;
+  }
+
+  .option-row-empty {
+    justify-content: center;
+    color: var(--railway-gray);
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 0.6rem;
   }
 
   .swatch {
@@ -358,9 +375,6 @@
 
   .icon-btn.delete { color: var(--action-pink); }
 
-  .icon-btn.trophy { color: #c9c9c9; }
-  .icon-btn.trophy.active { color: var(--action-orange); }
-
   /* Drag handle for reordering options */
   .drag-handle {
     background: none;
@@ -377,18 +391,9 @@
   .drag-handle:hover { background: #e2e6ea; }
   .drag-handle:active { cursor: grabbing; }
 
-  #optionsList li.dragging { opacity: 0.35; }
-
-  #optionsList li.drag-over {
-    outline: 2px dashed var(--wave-teal);
-    outline-offset: -2px;
-  }
-
-  /* ===== Grand Prize section ===== */
+  /* ===== Grand Prize section (top of editor) ===== */
   .grand-prize-section {
-    border-top: 1px solid #e2e6ea;
-    margin-top: 1rem;
-    padding-top: 1rem;
+    margin-bottom: 1.25rem;
   }
 
   .grand-prize-section h3 {
@@ -401,54 +406,35 @@
     margin: 0 0 0.6rem;
   }
 
-  #grandPrizeZone {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem;
-    min-height: 3rem;
+  #grandPrizeList {
+    min-height: 3.5rem;
     border: 2px dashed var(--hilite-yellow);
     border-radius: 12px;
     background: #FFF9EC;
     padding: 0.6rem;
   }
 
-  #grandPrizeZone.drag-over {
+  #grandPrizeList.drag-over {
     border-color: var(--action-orange);
     background: #FFF1D6;
   }
 
-  .grand-prize-empty {
-    margin: 0;
-    color: var(--railway-gray);
-    font-size: 0.85rem;
+  #optionsList.drag-over {
+    outline: 2px dashed var(--wave-teal);
+    outline-offset: 4px;
+    border-radius: 12px;
   }
 
-  .grand-prize-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    background: var(--action-orange);
-    color: #fff;
-    font-weight: 700;
-    font-size: 0.85rem;
-    border-radius: 999px;
-    padding: 0.3rem 0.4rem 0.3rem 0.75rem;
+  .options-section {
+    border-top: 1px solid #e2e6ea;
+    padding-top: 1rem;
   }
 
-  .grand-prize-chip .chip-remove {
-    background: rgba(255,255,255,0.25);
-    border: none;
-    color: #fff;
-    border-radius: 50%;
-    width: 20px;
-    height: 20px;
-    line-height: 1;
-    cursor: pointer;
-    font-size: 0.75rem;
+  .options-section h3 {
+    margin: 0 0 0.6rem;
+    font-size: 1rem;
+    color: var(--wave-blue);
   }
-
-  .grand-prize-chip .chip-remove:hover { background: rgba(255,255,255,0.45); }
 
   .modal-actions {
     display: flex;
@@ -569,22 +555,26 @@
 <div class="modal-overlay" id="editorOverlay">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editorTitle" id="editorModal">
     <h2 id="editorTitle">Edit Wheel Options</h2>
-    <p class="hint">Add, edit, reorder, or remove options below. At least 2 options are required to spin. Changes are saved to this browser's local storage.</p>
-
-    <div class="add-row">
-      <label for="newOptionInput" class="sr-only">New option text</label>
-      <input type="text" id="newOptionInput" placeholder="Add a new option&hellip;" maxlength="60">
-      <button class="btn btn-secondary" id="addOptionBtn" type="button">+ Add Option</button>
-    </div>
-
-    <div class="form-error" id="formError" role="alert"></div>
-
-    <ul id="optionsList" aria-label="Current wheel options"></ul>
+    <p class="hint">Drag an option's &#9776; handle between the two lists to mark or unmark it as a Grand Prize (or focus the handle and press Enter). Landing on a Grand Prize option triggers a confetti celebration. At least 2 options total are required to spin. Changes are saved to this browser's local storage.</p>
 
     <div class="grand-prize-section">
       <h3>&#127942; Grand Prize</h3>
-      <p class="hint">Drag an option's handle here, or tap its trophy icon, to mark it as a grand prize. Landing on one triggers a confetti celebration.</p>
-      <div id="grandPrizeZone" aria-label="Grand prize options"></div>
+      <p class="hint">Options here trigger a confetti celebration when landed on.</p>
+      <ul id="grandPrizeList" class="option-rows" aria-label="Grand prize options"></ul>
+    </div>
+
+    <div class="options-section">
+      <h3>Options</h3>
+
+      <div class="add-row">
+        <label for="newOptionInput" class="sr-only">New option text</label>
+        <input type="text" id="newOptionInput" placeholder="Add a new option&hellip;" maxlength="60">
+        <button class="btn btn-secondary" id="addOptionBtn" type="button">+ Add Option</button>
+      </div>
+
+      <div class="form-error" id="formError" role="alert"></div>
+
+      <ul id="optionsList" class="option-rows" aria-label="Current wheel options"></ul>
     </div>
 
     <div class="modal-actions">
@@ -656,7 +646,7 @@
   let currentRotation = 0;              // radians, current wheel rotation
   let isSpinning = false;
   let animationId = null;
-  let dragSrcIndex = null;              // index currently being dragged in the editor list
+  let dragSrcId = null;                 // id of the option currently being dragged in the editor
 
   const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
@@ -1017,7 +1007,7 @@
   const editOpenBtn = document.getElementById("editOpenBtn");
   const editorOverlay = document.getElementById("editorOverlay");
   const optionsListEl = document.getElementById("optionsList");
-  const grandPrizeZoneEl = document.getElementById("grandPrizeZone");
+  const grandPrizeListEl = document.getElementById("grandPrizeList");
   const newOptionInput = document.getElementById("newOptionInput");
   const addOptionBtn = document.getElementById("addOptionBtn");
   const saveBtn = document.getElementById("saveBtn");
@@ -1027,21 +1017,27 @@
 
   spinBtn.addEventListener("click", spin);
 
-  // The Grand Prize zone is a persistent drop target: dragging any option's
-  // handle here marks that option as a grand prize (see per-row drag handlers below).
-  grandPrizeZoneEl.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    grandPrizeZoneEl.classList.add("drag-over");
-  });
-  grandPrizeZoneEl.addEventListener("dragleave", () => grandPrizeZoneEl.classList.remove("drag-over"));
-  grandPrizeZoneEl.addEventListener("drop", (e) => {
-    e.preventDefault();
-    grandPrizeZoneEl.classList.remove("drag-over");
-    if (dragSrcIndex === null || !editingOptions[dragSrcIndex]) return;
-    editingOptions[dragSrcIndex].grandPrize = true;
-    renderEditorList();
-  });
+  // Both lists are persistent drop targets for dropping on empty space
+  // (below/between rows); dropping directly on a row is handled per-row
+  // in createOptionRow below, which stops the event before it reaches here.
+  function wireContainerDropZone(listEl, group) {
+    listEl.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      listEl.classList.add("drag-over");
+    });
+    listEl.addEventListener("dragleave", (e) => {
+      if (e.target === listEl) listEl.classList.remove("drag-over");
+    });
+    listEl.addEventListener("drop", (e) => {
+      e.preventDefault();
+      listEl.classList.remove("drag-over");
+      if (!dragSrcId) return;
+      moveItemToPosition(dragSrcId, null, group);
+    });
+  }
+  wireContainerDropZone(optionsListEl, "regular");
+  wireContainerDropZone(grandPrizeListEl, "grand");
 
   /* ============================================================
      Editor modal: open/close
@@ -1080,166 +1076,182 @@
   /* ============================================================
      Editor list rendering (CRUD)
      ============================================================ */
-  // Move an option from one position to another, re-render, and restore
-  // keyboard focus to the item's new position so arrow-key reordering feels continuous.
-  function moveOption(fromIdx, toIdx) {
-    const [item] = editingOptions.splice(fromIdx, 1);
-    editingOptions.splice(toIdx, 0, item);
+  function focusHandleById(id) {
+    const handle = optionsListEl.querySelector('[data-id="' + id + '"] .drag-handle')
+      || grandPrizeListEl.querySelector('[data-id="' + id + '"] .drag-handle');
+    if (handle) handle.focus();
+  }
+
+  // Swap an option with its neighbor within its own group (Options or
+  // Grand Prize), preserving the other group's relative order untouched.
+  function moveWithinGroup(id, direction) {
+    const item = editingOptions.find(o => o.id === id);
+    if (!item) return;
+    const groupIds = editingOptions.filter(o => o.grandPrize === item.grandPrize).map(o => o.id);
+    const pos = groupIds.indexOf(id);
+    const swapPos = pos + direction;
+    if (swapPos < 0 || swapPos >= groupIds.length) return;
+    const otherId = groupIds[swapPos];
+    const i = editingOptions.findIndex(o => o.id === id);
+    const j = editingOptions.findIndex(o => o.id === otherId);
+    [editingOptions[i], editingOptions[j]] = [editingOptions[j], editingOptions[i]];
     renderEditorList();
-    const handles = optionsListEl.querySelectorAll(".drag-handle");
-    if (handles[toIdx]) handles[toIdx].focus();
+    focusHandleById(id);
+  }
+
+  // Keyboard equivalent of dragging an option across to the other list.
+  function moveToOtherGroup(id) {
+    const item = editingOptions.find(o => o.id === id);
+    if (!item) return;
+    item.grandPrize = !item.grandPrize;
+    const i = editingOptions.findIndex(o => o.id === id);
+    const [moved] = editingOptions.splice(i, 1);
+    editingOptions.push(moved);
+    renderEditorList();
+    focusHandleById(id);
+  }
+
+  // Drag-and-drop: relocate dragId next to targetId (or to the end of the
+  // array if targetId is null, e.g. dropped on empty list space) and set
+  // its grandPrize flag to match the destination list.
+  function moveItemToPosition(dragId, targetId, targetGroup) {
+    const fromIdx = editingOptions.findIndex(o => o.id === dragId);
+    if (fromIdx === -1) return;
+    const [item] = editingOptions.splice(fromIdx, 1);
+    item.grandPrize = (targetGroup === "grand");
+    if (targetId) {
+      let toIdx = editingOptions.findIndex(o => o.id === targetId);
+      if (toIdx === -1) toIdx = editingOptions.length;
+      editingOptions.splice(toIdx, 0, item);
+    } else {
+      editingOptions.push(item);
+    }
+    renderEditorList();
+  }
+
+  function ariaLabelForHandle(opt) {
+    const groupName = opt.grandPrize ? "Grand Prize" : "Options";
+    const otherGroupName = opt.grandPrize ? "Options" : "Grand Prize";
+    return "Reorder " + opt.text + " (in " + groupName + "). Drag to move between lists, use arrow keys to reorder, or press Enter to move it to " + otherGroupName + ".";
+  }
+
+  // Builds one full row (drag handle, color swatch, editable text, delete)
+  // shared by both the Options list and the Grand Prize list — dragging a
+  // row between the two lists is what marks/unmarks it as a grand prize.
+  function createOptionRow(opt) {
+    const li = document.createElement("li");
+    li.className = "option-row";
+    li.dataset.id = opt.id;
+
+    const handle = document.createElement("button");
+    handle.type = "button";
+    handle.className = "drag-handle";
+    handle.draggable = true;
+    handle.innerHTML = "&#9776;";
+    handle.setAttribute("aria-label", ariaLabelForHandle(opt));
+
+    handle.addEventListener("dragstart", (e) => {
+      dragSrcId = opt.id;
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", opt.id);
+      li.classList.add("dragging");
+    });
+    handle.addEventListener("dragend", () => {
+      dragSrcId = null;
+      document.querySelectorAll(".option-row").forEach(el => {
+        el.classList.remove("dragging", "drag-over");
+      });
+      optionsListEl.classList.remove("drag-over");
+      grandPrizeListEl.classList.remove("drag-over");
+    });
+    handle.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        moveWithinGroup(opt.id, -1);
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        moveWithinGroup(opt.id, 1);
+      } else if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        moveToOtherGroup(opt.id);
+      }
+    });
+
+    // Row-level drop target: dropping directly on a row inserts next to it
+    // and stops the event so the container's own drop handler doesn't also fire.
+    li.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      li.classList.add("drag-over");
+    });
+    li.addEventListener("dragleave", () => li.classList.remove("drag-over"));
+    li.addEventListener("drop", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      li.classList.remove("drag-over");
+      if (!dragSrcId || dragSrcId === opt.id) return;
+      moveItemToPosition(dragSrcId, opt.id, opt.grandPrize ? "grand" : "regular");
+    });
+
+    const swatch = document.createElement("span");
+    swatch.className = "swatch";
+    swatch.style.background = PALETTE[editingOptions.indexOf(opt) % PALETTE.length];
+    swatch.setAttribute("aria-hidden", "true");
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.value = opt.text;
+    input.maxLength = 60;
+    input.setAttribute("aria-label", "Option text");
+    input.addEventListener("input", () => {
+      opt.text = input.value;
+    });
+
+    const delBtn = document.createElement("button");
+    delBtn.type = "button";
+    delBtn.className = "icon-btn delete";
+    delBtn.innerHTML = "&#10005;";
+    delBtn.setAttribute("aria-label", "Delete option: " + opt.text);
+    delBtn.addEventListener("click", () => {
+      const i = editingOptions.indexOf(opt);
+      if (i > -1) editingOptions.splice(i, 1);
+      renderEditorList();
+    });
+
+    li.appendChild(handle);
+    li.appendChild(swatch);
+    li.appendChild(input);
+    li.appendChild(delBtn);
+    return li;
+  }
+
+  function createEmptyRow(text) {
+    const li = document.createElement("li");
+    li.className = "option-row-empty";
+    li.textContent = text;
+    return li;
   }
 
   function renderEditorList() {
     optionsListEl.innerHTML = "";
-    editingOptions.forEach((opt, idx) => {
-      const li = document.createElement("li");
-      li.dataset.index = String(idx);
+    grandPrizeListEl.innerHTML = "";
 
-      // Drag handle: dragging is only initiated from this handle (not the
-      // whole row), so text inputs remain freely selectable/editable. Dropping
-      // on another row reorders; dropping on the Grand Prize zone marks it.
-      const handle = document.createElement("button");
-      handle.type = "button";
-      handle.className = "drag-handle";
-      handle.draggable = true;
-      handle.innerHTML = "&#9776;";
-      handle.setAttribute("aria-label", "Reorder option: " + opt.text + ". Drag to move or drop on Grand Prize, or use arrow keys while focused.");
+    const regularItems = editingOptions.filter(o => !o.grandPrize);
+    const grandItems = editingOptions.filter(o => o.grandPrize);
 
-      handle.addEventListener("dragstart", (e) => {
-        dragSrcIndex = idx;
-        e.dataTransfer.effectAllowed = "move";
-        e.dataTransfer.setData("text/plain", String(idx));
-        li.classList.add("dragging");
-      });
-      handle.addEventListener("dragend", () => {
-        dragSrcIndex = null;
-        optionsListEl.querySelectorAll("li").forEach(el => {
-          el.classList.remove("dragging", "drag-over");
-        });
-        grandPrizeZoneEl.classList.remove("drag-over");
-      });
-      handle.addEventListener("keydown", (e) => {
-        if (e.key === "ArrowUp" && idx > 0) {
-          e.preventDefault();
-          moveOption(idx, idx - 1);
-        } else if (e.key === "ArrowDown" && idx < editingOptions.length - 1) {
-          e.preventDefault();
-          moveOption(idx, idx + 1);
-        }
-      });
+    regularItems.forEach(opt => optionsListEl.appendChild(createOptionRow(opt)));
+    grandItems.forEach(opt => grandPrizeListEl.appendChild(createOptionRow(opt)));
 
-      // Drop target handlers live on the row so dropping anywhere on it works.
-      li.addEventListener("dragover", (e) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = "move";
-        li.classList.add("drag-over");
-      });
-      li.addEventListener("dragleave", () => li.classList.remove("drag-over"));
-      li.addEventListener("drop", (e) => {
-        e.preventDefault();
-        li.classList.remove("drag-over");
-        if (dragSrcIndex === null || dragSrcIndex === idx) return;
-        moveOption(dragSrcIndex, idx);
-      });
-
-      const swatch = document.createElement("span");
-      swatch.className = "swatch";
-      swatch.style.background = PALETTE[idx % PALETTE.length];
-      swatch.setAttribute("aria-hidden", "true");
-
-      const input = document.createElement("input");
-      input.type = "text";
-      input.value = opt.text;
-      input.maxLength = 60;
-      input.setAttribute("aria-label", "Option " + (idx + 1) + " text");
-      input.addEventListener("input", () => {
-        editingOptions[idx].text = input.value;
-        // Update the matching Grand Prize chip's label live, without a full
-        // list re-render, so the text input never loses focus mid-keystroke.
-        if (editingOptions[idx].grandPrize) {
-          const chipLabel = grandPrizeZoneEl.querySelector('[data-id="' + opt.id + '"] .chip-text');
-          if (chipLabel) chipLabel.textContent = "\u{1F3C6} " + input.value;
-        }
-      });
-
-      // Keyboard/tap-friendly alternative to dragging: toggles Grand Prize status.
-      const trophyBtn = document.createElement("button");
-      trophyBtn.type = "button";
-      trophyBtn.className = "icon-btn trophy" + (opt.grandPrize ? " active" : "");
-      trophyBtn.innerHTML = "&#127942;";
-      trophyBtn.setAttribute("aria-pressed", opt.grandPrize ? "true" : "false");
-      trophyBtn.setAttribute("aria-label", (opt.grandPrize ? "Remove " : "Add ") + opt.text + (opt.grandPrize ? " from" : " to") + " Grand Prize");
-      trophyBtn.addEventListener("click", () => {
-        editingOptions[idx].grandPrize = !editingOptions[idx].grandPrize;
-        renderEditorList();
-      });
-
-      const delBtn = document.createElement("button");
-      delBtn.type = "button";
-      delBtn.className = "icon-btn delete";
-      delBtn.innerHTML = "&#10005;";
-      delBtn.setAttribute("aria-label", "Delete option: " + opt.text);
-      delBtn.addEventListener("click", () => {
-        editingOptions.splice(idx, 1);
-        renderEditorList();
-      });
-
-      li.appendChild(handle);
-      li.appendChild(swatch);
-      li.appendChild(input);
-      li.appendChild(trophyBtn);
-      li.appendChild(delBtn);
-      optionsListEl.appendChild(li);
-    });
-
-    if (editingOptions.length === 0) {
-      const empty = document.createElement("li");
-      empty.style.justifyContent = "center";
-      empty.style.color = "#5A5A5A";
-      empty.textContent = "No options yet — add one below.";
-      optionsListEl.appendChild(empty);
+    if (regularItems.length === 0) {
+      optionsListEl.appendChild(createEmptyRow(
+        editingOptions.length === 0
+          ? "No options yet — add one below."
+          : "All options are marked Grand Prize — drag one back here to make it a regular option."
+      ));
     }
-
-    renderGrandPrizeZone();
-  }
-
-  function renderGrandPrizeZone() {
-    grandPrizeZoneEl.innerHTML = "";
-    const winners = editingOptions.filter(o => o.grandPrize);
-
-    if (winners.length === 0) {
-      const empty = document.createElement("p");
-      empty.className = "grand-prize-empty";
-      empty.textContent = "No grand prizes yet.";
-      grandPrizeZoneEl.appendChild(empty);
-      return;
+    if (grandItems.length === 0) {
+      grandPrizeListEl.appendChild(createEmptyRow("Drag an option here (via its ☰ handle) to mark it as a Grand Prize."));
     }
-
-    winners.forEach(opt => {
-      const chip = document.createElement("span");
-      chip.className = "grand-prize-chip";
-      chip.dataset.id = opt.id;
-
-      const label = document.createElement("span");
-      label.className = "chip-text";
-      label.textContent = "\u{1F3C6} " + opt.text;
-
-      const removeBtn = document.createElement("button");
-      removeBtn.type = "button";
-      removeBtn.className = "chip-remove";
-      removeBtn.innerHTML = "&#10005;";
-      removeBtn.setAttribute("aria-label", "Remove " + opt.text + " from Grand Prize");
-      removeBtn.addEventListener("click", () => {
-        const target = editingOptions.find(o => o.id === opt.id);
-        if (target) target.grandPrize = false;
-        renderEditorList();
-      });
-
-      chip.appendChild(label);
-      chip.appendChild(removeBtn);
-      grandPrizeZoneEl.appendChild(chip);
-    });
   }
 
   function addOption() {
