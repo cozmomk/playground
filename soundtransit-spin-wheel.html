@@ -351,6 +351,12 @@
     padding: 0.6rem;
   }
 
+  .swatch-wrap {
+    position: relative;
+    display: inline-flex;
+    flex-shrink: 0;
+  }
+
   .swatch {
     width: 18px;
     height: 18px;
@@ -358,6 +364,51 @@
     flex-shrink: 0;
     border: 2px solid #fff;
     box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
+    padding: 0;
+    cursor: pointer;
+  }
+
+  .swatch:hover,
+  .swatch[aria-expanded="true"] {
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.15), 0 0 0 3px var(--wave-teal);
+  }
+
+  /* Color picker popover, anchored under its swatch */
+  .color-picker {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 30;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    padding: 0.5rem;
+    display: grid;
+    grid-template-columns: repeat(4, auto);
+    gap: 0.45rem;
+  }
+
+  .color-picker[hidden] { display: none; }
+
+  .color-option {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
+    padding: 0;
+    cursor: pointer;
+  }
+
+  .color-option.selected {
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.15), 0 0 0 2px var(--wave-blue);
+  }
+
+  .color-option-auto {
+    background: conic-gradient(
+      var(--wave-blue), var(--wave-green), var(--wave-teal),
+      var(--action-pink), var(--action-orange), var(--hilite-yellow), var(--wave-blue)
+    );
   }
 
   .icon-btn {
@@ -616,8 +667,20 @@
     "#FFB819"  // Hi-Lite Yellow (paired with dark text)
   ];
 
-  // Options are { id, text, grandPrize }. The id gives each option a stable
-  // identity across edits/reorders so "grand prize" marking survives text changes.
+  const PALETTE_NAMES = {
+    "#002E6D": "Wave Blue",
+    "#006852": "Wave Green",
+    "#0091B3": "Wave Teal",
+    "#E51A92": "Action Pink",
+    "#F38B00": "Action Orange",
+    "#FFB819": "Hi-Lite Yellow"
+  };
+
+  // Options are { id, text, grandPrize, color }. The id gives each option a
+  // stable identity across edits/reorders so "grand prize" marking and any
+  // manually-picked color survive text changes and reordering. color is
+  // either a PALETTE hex string (manually picked) or null (auto-cycled by
+  // the option's position, same as the wheel slice coloring).
   function makeId() {
     return window.crypto && crypto.randomUUID
       ? crypto.randomUUID()
@@ -625,19 +688,20 @@
   }
 
   function buildDefaultOptions() {
-    return DEFAULT_OPTION_TEXTS.map(text => ({ id: makeId(), text, grandPrize: false }));
+    return DEFAULT_OPTION_TEXTS.map(text => ({ id: makeId(), text, grandPrize: false, color: null }));
   }
 
   // Accepts either a legacy plain string (pre-grand-prize storage format) or
   // an already-shaped option object, and normalizes to the current shape.
   function normalizeOption(o) {
     if (typeof o === "string") {
-      return { id: makeId(), text: o, grandPrize: false };
+      return { id: makeId(), text: o, grandPrize: false, color: null };
     }
     return {
       id: (o && typeof o.id === "string") ? o.id : makeId(),
       text: (o && typeof o.text === "string") ? o.text : "",
-      grandPrize: !!(o && o.grandPrize)
+      grandPrize: !!(o && o.grandPrize),
+      color: (o && typeof o.color === "string" && PALETTE.includes(o.color)) ? o.color : null
     };
   }
 
@@ -726,7 +790,7 @@
     for (let i = 0; i < n; i++) {
       const startAngle = rotation + i * sliceAngle;
       const endAngle = startAngle + sliceAngle;
-      const color = PALETTE[i % PALETTE.length];
+      const color = options[i].color || PALETTE[i % PALETTE.length];
 
       // Slice wedge
       ctx.beginPath();
@@ -1061,8 +1125,21 @@
     if (lastFocusedElement) lastFocusedElement.focus();
   }
 
+  function closeAllColorPickers() {
+    document.querySelectorAll(".color-picker").forEach(p => { p.hidden = true; });
+    document.querySelectorAll('.swatch[aria-expanded="true"]').forEach(s => s.setAttribute("aria-expanded", "false"));
+  }
+
+  // Clicking anywhere outside an open color picker closes it.
+  document.addEventListener("click", closeAllColorPickers);
+
   function onModalKeydown(e) {
     if (e.key === "Escape") {
+      const openPicker = document.querySelector(".color-picker:not([hidden])");
+      if (openPicker) {
+        closeAllColorPickers();
+        return;
+      }
       closeEditor();
     }
   }
@@ -1193,10 +1270,66 @@
       moveItemToPosition(dragSrcId, opt.id, opt.grandPrize ? "grand" : "regular");
     });
 
-    const swatch = document.createElement("span");
+    const swatchWrap = document.createElement("div");
+    swatchWrap.className = "swatch-wrap";
+
+    const autoColor = PALETTE[editingOptions.indexOf(opt) % PALETTE.length];
+    const displayColor = opt.color || autoColor;
+
+    const swatch = document.createElement("button");
+    swatch.type = "button";
     swatch.className = "swatch";
-    swatch.style.background = PALETTE[editingOptions.indexOf(opt) % PALETTE.length];
-    swatch.setAttribute("aria-hidden", "true");
+    swatch.style.background = displayColor;
+    swatch.setAttribute("aria-haspopup", "true");
+    swatch.setAttribute("aria-expanded", "false");
+    swatch.setAttribute("aria-label", "Change color for " + opt.text + ". Current: " + (opt.color ? PALETTE_NAMES[displayColor] : "Auto (" + PALETTE_NAMES[displayColor] + ")"));
+
+    const picker = document.createElement("div");
+    picker.className = "color-picker";
+    picker.setAttribute("role", "menu");
+    picker.hidden = true;
+
+    PALETTE.forEach(hex => {
+      const colorBtn = document.createElement("button");
+      colorBtn.type = "button";
+      colorBtn.className = "color-option" + (opt.color === hex ? " selected" : "");
+      colorBtn.style.background = hex;
+      colorBtn.setAttribute("role", "menuitem");
+      colorBtn.setAttribute("aria-label", PALETTE_NAMES[hex]);
+      colorBtn.title = PALETTE_NAMES[hex];
+      colorBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        opt.color = hex;
+        renderEditorList();
+      });
+      picker.appendChild(colorBtn);
+    });
+
+    const autoBtn = document.createElement("button");
+    autoBtn.type = "button";
+    autoBtn.className = "color-option color-option-auto" + (!opt.color ? " selected" : "");
+    autoBtn.setAttribute("role", "menuitem");
+    autoBtn.setAttribute("aria-label", "Automatic color (cycles through the palette)");
+    autoBtn.title = "Auto";
+    autoBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      opt.color = null;
+      renderEditorList();
+    });
+    picker.appendChild(autoBtn);
+
+    swatch.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const wasOpen = !picker.hidden;
+      closeAllColorPickers();
+      if (!wasOpen) {
+        picker.hidden = false;
+        swatch.setAttribute("aria-expanded", "true");
+      }
+    });
+
+    swatchWrap.appendChild(swatch);
+    swatchWrap.appendChild(picker);
 
     const input = document.createElement("input");
     input.type = "text";
@@ -1219,7 +1352,7 @@
     });
 
     li.appendChild(handle);
-    li.appendChild(swatch);
+    li.appendChild(swatchWrap);
     li.appendChild(input);
     li.appendChild(delBtn);
     return li;
@@ -1262,7 +1395,7 @@
       return;
     }
     formError.textContent = "";
-    editingOptions.push({ id: makeId(), text: value, grandPrize: false });
+    editingOptions.push({ id: makeId(), text: value, grandPrize: false, color: null });
     newOptionInput.value = "";
     renderEditorList();
     newOptionInput.focus();
@@ -1279,7 +1412,7 @@
   function saveEditor() {
     // Validation: no blanks, at least 2 options.
     const cleaned = editingOptions
-      .map(o => ({ id: o.id, text: o.text.trim(), grandPrize: o.grandPrize }))
+      .map(o => ({ id: o.id, text: o.text.trim(), grandPrize: o.grandPrize, color: o.color }))
       .filter(o => o.text.length > 0);
 
     if (cleaned.length !== editingOptions.length) {
