@@ -989,22 +989,7 @@
       ctx.stroke();
     }
 
-    // Pass 4: gold double-ring for grand-prize slices, drawn last so a
-    // neighboring slice's own white separator (pass 3) never overwrites
-    // either of a grand-prize wedge's shared edges.
-    for (let i = 0; i < n; i++) {
-      if (!options[i].grandPrize) continue;
-      const [startAngle, endAngle] = sliceAngles(i);
-      tracePath(startAngle, endAngle);
-      ctx.strokeStyle = "#2B376E";
-      ctx.lineWidth = 5;
-      ctx.stroke();
-      ctx.strokeStyle = "#F5A623";
-      ctx.lineWidth = 3;
-      ctx.stroke();
-    }
-
-    // Pass 5: labels and trophy icons, on top of everything else.
+    // Pass 4: labels and trophy icons, on top of everything else.
     for (let i = 0; i < n; i++) {
       const [startAngle, endAngle] = sliceAngles(i);
       const opt = options[i];
