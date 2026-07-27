@@ -710,16 +710,16 @@
   const STORAGE_KEY = "st-spin-wheel-options-v1";
   const STATS_KEY = "st-spin-wheel-stats-v1";
 
-  const DEFAULT_OPTION_TEXTS = [
-    "Better luck next spin",
-    "Spin again",
-    "ST Store Discount Code",
-    "ST Hat",
-    "Paid fare - West Seattle",
-    "Ballard",
-    "Everett",
-    "Tacoma Dome",
-    "Redmond"
+  const DEFAULT_OPTIONS_CONFIG = [
+    { text: "Not a winner" },
+    { text: "Spin again" },
+    { text: "ST Store Discount" },
+    { text: "Hat", grandPrize: true },
+    { text: "Bag" },
+    { text: "Scarf" },
+    { text: "Sticker" },
+    { text: "Plushie", grandPrize: true },
+    { text: "Toy Train" }
   ];
 
   // Full official Sound Transit brand palette (soundtransit.org brand microsite),
@@ -797,7 +797,7 @@
   }
 
   function buildDefaultOptions() {
-    return DEFAULT_OPTION_TEXTS.map(text => ({ id: makeId(), text, grandPrize: false, color: null }));
+    return DEFAULT_OPTIONS_CONFIG.map(o => ({ id: makeId(), text: o.text, grandPrize: !!o.grandPrize, color: null }));
   }
 
   // Accepts either a legacy plain string (pre-grand-prize storage format) or
