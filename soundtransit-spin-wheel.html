@@ -928,8 +928,8 @@
     }
 
     const sliceAngle = (Math.PI * 2) / n;
-    // Smooth 0..1 breathing pulse (~1.8s period), only animated while idle.
-    const pulse = (Math.sin(now / 900) + 1) / 2;
+    // Smooth 0..1 breathing pulse (~2.4s period).
+    const pulse = (Math.sin(now / 380) + 1) / 2;
 
     function sliceAngles(i) {
       const startAngle = rotation + i * sliceAngle;
@@ -943,22 +943,13 @@
       ctx.closePath();
     }
 
-    // Pass 1: fills. Grand-prize slices get a soft golden glow that bleeds
-    // past the rim, breathing gently while the wheel is idle.
+    // Pass 1: fills.
     for (let i = 0; i < n; i++) {
       const [startAngle, endAngle] = sliceAngles(i);
-      const opt = options[i];
-      const color = opt.color || PALETTE[i % PALETTE.length];
-
-      ctx.save();
-      if (opt.grandPrize && !isSpinning) {
-        ctx.shadowColor = "rgba(245, 166, 35, " + (0.35 + pulse * 0.45).toFixed(2) + ")";
-        ctx.shadowBlur = 10 + pulse * 14;
-      }
+      const color = options[i].color || PALETTE[i % PALETTE.length];
       tracePath(startAngle, endAngle);
       ctx.fillStyle = color;
       ctx.fill();
-      ctx.restore();
     }
 
     // Pass 2: plain white separators for every slice.
@@ -972,17 +963,24 @@
 
     // Pass 3: gold double-ring for grand-prize slices, drawn last so a
     // neighboring slice's own white separator (pass 2) never overwrites
-    // either of a grand-prize wedge's shared edges.
+    // either of a grand-prize wedge's shared edges. The ring itself breathes
+    // (width + brightness) while idle — a shadow bleeding past the rim isn't
+    // usable here since the canvas element is clipped to a circle right at
+    // the wheel's own edge (see #wheelCanvas { border-radius: 50% }).
+    const ringPulse = isSpinning ? 0 : pulse;
+    const goldWidth = 3 + ringPulse * 3;
     for (let i = 0; i < n; i++) {
       if (!options[i].grandPrize) continue;
       const [startAngle, endAngle] = sliceAngles(i);
       tracePath(startAngle, endAngle);
       ctx.strokeStyle = "#2B376E";
-      ctx.lineWidth = 5;
+      ctx.lineWidth = goldWidth + 2;
       ctx.stroke();
       ctx.strokeStyle = "#F5A623";
-      ctx.lineWidth = 3;
+      ctx.globalAlpha = 0.7 + ringPulse * 0.3;
+      ctx.lineWidth = goldWidth;
       ctx.stroke();
+      ctx.globalAlpha = 1;
     }
 
     // Pass 4: labels and trophy icons, on top of everything else.
