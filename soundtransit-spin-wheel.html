@@ -928,8 +928,9 @@
     }
 
     const sliceAngle = (Math.PI * 2) / n;
-    // Smooth 0..1 breathing pulse (~2.4s period).
-    const pulse = (Math.sin(now / 380) + 1) / 2;
+    // Repeating 0..1 ramp for the shimmer sweep (~2.2s per pass, idle only).
+    const shimmerActive = !isSpinning && !prefersReducedMotion.matches;
+    const shimmerT = (now / 2200) % 1;
 
     function sliceAngles(i) {
       const startAngle = rotation + i * sliceAngle;
@@ -952,7 +953,34 @@
       ctx.fill();
     }
 
-    // Pass 2: plain white separators for every slice.
+    // Pass 2: a soft light band sweeps outward across each grand-prize
+    // slice's face (clipped to its wedge), repeating while idle.
+    if (shimmerActive) {
+      for (let i = 0; i < n; i++) {
+        if (!options[i].grandPrize) continue;
+        const [startAngle, endAngle] = sliceAngles(i);
+        const midAngle = startAngle + sliceAngle / 2;
+
+        ctx.save();
+        tracePath(startAngle, endAngle);
+        ctx.clip();
+        ctx.translate(CENTER, CENTER);
+        ctx.rotate(midAngle);
+
+        const bandWidth = 34;
+        const travel = RADIUS + bandWidth * 2;
+        const bandCenter = -bandWidth + shimmerT * travel;
+        const grad = ctx.createLinearGradient(bandCenter - bandWidth, 0, bandCenter + bandWidth, 0);
+        grad.addColorStop(0, "rgba(255,255,255,0)");
+        grad.addColorStop(0.5, "rgba(255,255,255,0.55)");
+        grad.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = grad;
+        ctx.fillRect(bandCenter - bandWidth, -RADIUS, bandWidth * 2, RADIUS * 2);
+        ctx.restore();
+      }
+    }
+
+    // Pass 3: plain white separators for every slice.
     for (let i = 0; i < n; i++) {
       const [startAngle, endAngle] = sliceAngles(i);
       tracePath(startAngle, endAngle);
@@ -961,29 +989,22 @@
       ctx.stroke();
     }
 
-    // Pass 3: gold double-ring for grand-prize slices, drawn last so a
-    // neighboring slice's own white separator (pass 2) never overwrites
-    // either of a grand-prize wedge's shared edges. The ring itself breathes
-    // (width + brightness) while idle — a shadow bleeding past the rim isn't
-    // usable here since the canvas element is clipped to a circle right at
-    // the wheel's own edge (see #wheelCanvas { border-radius: 50% }).
-    const ringPulse = isSpinning ? 0 : pulse;
-    const goldWidth = 3 + ringPulse * 3;
+    // Pass 4: gold double-ring for grand-prize slices, drawn last so a
+    // neighboring slice's own white separator (pass 3) never overwrites
+    // either of a grand-prize wedge's shared edges.
     for (let i = 0; i < n; i++) {
       if (!options[i].grandPrize) continue;
       const [startAngle, endAngle] = sliceAngles(i);
       tracePath(startAngle, endAngle);
       ctx.strokeStyle = "#2B376E";
-      ctx.lineWidth = goldWidth + 2;
+      ctx.lineWidth = 5;
       ctx.stroke();
       ctx.strokeStyle = "#F5A623";
-      ctx.globalAlpha = 0.7 + ringPulse * 0.3;
-      ctx.lineWidth = goldWidth;
+      ctx.lineWidth = 3;
       ctx.stroke();
-      ctx.globalAlpha = 1;
     }
 
-    // Pass 4: labels and trophy icons, on top of everything else.
+    // Pass 5: labels and trophy icons, on top of everything else.
     for (let i = 0; i < n; i++) {
       const [startAngle, endAngle] = sliceAngles(i);
       const opt = options[i];
