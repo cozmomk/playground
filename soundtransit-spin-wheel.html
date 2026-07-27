@@ -907,7 +907,10 @@
     return lines;
   }
 
-  function drawWheel(rotation) {
+  // `now` drives the idle glow pulse; defaults to "this instant" for one-off
+  // redraws (resize, save) that don't pass a timestamp of their own.
+  function drawWheel(rotation, now) {
+    if (now === undefined) now = performance.now();
     const n = options.length;
     ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
@@ -925,22 +928,49 @@
     }
 
     const sliceAngle = (Math.PI * 2) / n;
+    // Smooth 0..1 breathing pulse (~1.8s period), only animated while idle.
+    const pulse = (Math.sin(now / 900) + 1) / 2;
 
     for (let i = 0; i < n; i++) {
       const startAngle = rotation + i * sliceAngle;
       const endAngle = startAngle + sliceAngle;
-      const color = options[i].color || PALETTE[i % PALETTE.length];
+      const opt = options[i];
+      const color = opt.color || PALETTE[i % PALETTE.length];
+      const isGrand = !!opt.grandPrize;
 
-      // Slice wedge
+      // Slice wedge fill. Grand-prize slices get a soft golden glow that
+      // bleeds past the rim, breathing gently while the wheel is idle.
+      ctx.save();
+      if (isGrand && !isSpinning) {
+        ctx.shadowColor = "rgba(245, 166, 35, " + (0.35 + pulse * 0.45).toFixed(2) + ")";
+        ctx.shadowBlur = 10 + pulse * 14;
+      }
       ctx.beginPath();
       ctx.moveTo(CENTER, CENTER);
       ctx.arc(CENTER, CENTER, RADIUS, startAngle, endAngle);
       ctx.closePath();
       ctx.fillStyle = color;
       ctx.fill();
-      ctx.strokeStyle = "#FFFFFF";
-      ctx.lineWidth = 2;
-      ctx.stroke();
+      ctx.restore();
+
+      // Slice border: a gold double-ring (dark hairline + gold) always marks
+      // grand-prize slices, so it stays legible against any fill color.
+      ctx.beginPath();
+      ctx.moveTo(CENTER, CENTER);
+      ctx.arc(CENTER, CENTER, RADIUS, startAngle, endAngle);
+      ctx.closePath();
+      if (isGrand) {
+        ctx.strokeStyle = "#2B376E";
+        ctx.lineWidth = 5;
+        ctx.stroke();
+        ctx.strokeStyle = "#F5A623";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      } else {
+        ctx.strokeStyle = "#FFFFFF";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
 
       // Label: use dark or light text depending on slice brightness for contrast.
       ctx.fillStyle = isLightColor(color) ? "#2B376E" : "#FFFFFF";
@@ -951,18 +981,28 @@
       ctx.rotate(midAngle);
 
       const maxChars = n <= 6 ? 16 : n <= 10 ? 13 : 10;
-      const lines = wrapText(options[i].text, maxChars);
+      const lines = wrapText(opt.text, maxChars);
       const fontSize = n <= 6 ? 20 : n <= 10 ? 17 : 14;
       ctx.font = "700 " + fontSize + "px Segoe UI, sans-serif";
       ctx.textAlign = "right";
       ctx.textBaseline = "middle";
 
-      const textRadius = RADIUS - 24;
+      // Grand-prize labels start a bit further inward, reserving a clear band
+      // near the rim for the trophy icon instead of crowding the same line.
+      const textRadius = RADIUS - 24 - (isGrand ? 12 : 0);
       const lineHeight = fontSize * 1.15;
       const startY = -((lines.length - 1) * lineHeight) / 2;
       lines.forEach((line, idx) => {
         ctx.fillText(line, textRadius, startY + idx * lineHeight);
       });
+
+      // Trophy icon, just outside the label, marking grand-prize slices.
+      if (isGrand) {
+        ctx.font = Math.max(12, fontSize - 2) + "px sans-serif";
+        ctx.textAlign = "right";
+        ctx.textBaseline = "middle";
+        ctx.fillText("\u{1F3C6}", RADIUS - 8, 0);
+      }
 
       ctx.restore();
     }
@@ -1699,9 +1739,21 @@
   /* ============================================================
      Init
      ============================================================ */
+  // Keeps the grand-prize glow gently breathing while idle. Redraws are
+  // cheap for a wheel this size, and the loop itself just skips drawing
+  // while a spin's own animation frame loop is already driving drawWheel.
+  function idlePulseFrame(now) {
+    if (!isSpinning) drawWheel(currentRotation, now);
+    requestAnimationFrame(idlePulseFrame);
+  }
+
   function init() {
     resizeConfettiCanvas();
-    drawWheel(currentRotation);
+    if (prefersReducedMotion.matches) {
+      drawWheel(currentRotation);
+    } else {
+      requestAnimationFrame(idlePulseFrame);
+    }
   }
 
   window.addEventListener("resize", () => drawWheel(currentRotation));
