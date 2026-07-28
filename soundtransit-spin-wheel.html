@@ -212,45 +212,98 @@
     z-index: 40;
   }
 
-  /* ===== Edit link (bottom-left) ===== */
-  .edit-link {
+  /* ===== Event control (top-right): toggle + settings gear =====
+     Single consolidated entry point for everything staff-related — replaces
+     the old separate Edit/Stats/Entries corner buttons. */
+  .event-control {
     position: fixed;
-    left: 1rem;
-    bottom: 1rem;
-    background: var(--wave-blue);
-    color: #fff;
-    text-decoration: none;
-    font-weight: 700;
-    font-size: 0.9rem;
-    padding: 0.6rem 1.1rem;
-    border-radius: 999px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.25);
-    border: 2px solid var(--hilite-yellow);
-    cursor: pointer;
-    z-index: 20;
-  }
-
-  .edit-link:hover { background: #001f4d; }
-
-  /* ===== Stats link (bottom-right), mirrors Edit link ===== */
-  .stats-link {
-    position: fixed;
+    top: 1rem;
     right: 1rem;
-    bottom: 1rem;
-    background: var(--wave-teal);
-    color: #fff;
-    text-decoration: none;
-    font-weight: 700;
-    font-size: 0.9rem;
-    padding: 0.6rem 1.1rem;
-    border-radius: 999px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+    z-index: 46;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: var(--wave-blue);
     border: 2px solid var(--hilite-yellow);
-    cursor: pointer;
-    z-index: 20;
+    border-radius: 999px;
+    padding: 0.45rem 0.7rem;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.25);
   }
 
-  .stats-link:hover { background: #00655f; }
+  .event-toggle-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    cursor: pointer;
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.85rem;
+  }
+
+  .event-toggle-input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+  }
+
+  .event-toggle-track {
+    width: 34px;
+    height: 20px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.3);
+    position: relative;
+    flex-shrink: 0;
+    transition: background 0.15s ease;
+  }
+
+  .event-toggle-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform 0.15s ease;
+  }
+
+  .event-toggle-input:checked + .event-toggle-track {
+    background: var(--action-pink);
+  }
+
+  .event-toggle-input:checked + .event-toggle-track .event-toggle-thumb {
+    transform: translateX(14px);
+  }
+
+  .event-toggle-input:focus-visible + .event-toggle-track {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  .event-settings-btn {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 1.15rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0.1rem 0.2rem;
+  }
+
+  .event-settings-btn:hover { opacity: 0.8; }
+
+  .settings-field {
+    margin-bottom: 1rem;
+  }
+
+  .settings-field label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--wave-blue);
+    margin-bottom: 0.35rem;
+  }
 
   /* ===== Stats modal contents ===== */
   .stats-total {
@@ -328,6 +381,12 @@
   }
 
   .modal-overlay.open { display: flex; }
+
+  /* Email gate (kiosk mode) reuses .modal-overlay's hidden-by-default/.open
+     behavior, just at a lower z-index than the staff modals (50) so the
+     Event control in the top corner always stays reachable above it, and a
+     higher z-index than the confetti canvas (40) so it isn't peeked through. */
+  .gate-overlay { z-index: 45; }
 
   .modal {
     background: var(--card-white);
@@ -592,6 +651,17 @@
     font-size: 0.95rem;
   }
 
+  /* Shared text input styling for the gate email field and PIN field */
+  .field-input {
+    width: 100%;
+    border: 1px solid #cfd6dd;
+    border-radius: 8px;
+    padding: 0.7rem 0.8rem;
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+    box-sizing: border-box;
+  }
+
   .sr-only {
     position: absolute;
     width: 1px;
@@ -643,7 +713,29 @@
 
 <canvas id="confettiCanvas" aria-hidden="true"></canvas>
 
-<button class="edit-link" id="editOpenBtn" type="button" aria-haspopup="dialog" aria-controls="editorModal">Edit</button>
+<!-- ===== Email gate (kiosk mode; only shown while Event mode is on) ===== -->
+<div class="modal-overlay gate-overlay" id="gateOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="gateTitle" id="gateModal">
+    <h2 id="gateTitle">Enter your email to spin!</h2>
+    <p class="hint">We'll use this to award your prize. One spin per guest.</p>
+    <form id="gateForm" novalidate>
+      <label for="gateEmailInput" class="sr-only">Email address</label>
+      <input type="email" id="gateEmailInput" class="field-input" placeholder="you@example.com" autocomplete="off" inputmode="email" required>
+      <div class="form-error" id="gateError" role="alert"></div>
+      <button class="btn btn-primary" type="submit" id="gateSubmitBtn">Let's Spin!</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== Event control (top-right): toggle + settings gear ===== -->
+<div class="event-control" id="eventControl">
+  <label class="event-toggle-label" for="eventToggleInput">
+    <input type="checkbox" id="eventToggleInput" class="event-toggle-input">
+    <span class="event-toggle-track" aria-hidden="true"><span class="event-toggle-thumb"></span></span>
+    <span>Event</span>
+  </label>
+  <button class="event-settings-btn" id="settingsOpenBtn" type="button" aria-label="Event settings" aria-haspopup="dialog" aria-controls="settingsModal" title="Event settings">&#9881;</button>
+</div>
 
 <!-- ===== Options editor modal ===== -->
 <div class="modal-overlay" id="editorOverlay">
@@ -679,9 +771,7 @@
   </div>
 </div>
 
-<button class="stats-link" id="statsOpenBtn" type="button" aria-haspopup="dialog" aria-controls="statsModal">Stats</button>
-
-<!-- ===== Win statistics modal ===== -->
+<!-- ===== Win statistics modal (opened from Event Settings) ===== -->
 <div class="modal-overlay" id="statsOverlay">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="statsTitle" id="statsModal">
     <h2 id="statsTitle">Spin Statistics</h2>
@@ -700,6 +790,84 @@
   </div>
 </div>
 
+<!-- ===== Staff PIN entry (subsequent unlocks, once a PIN exists) ===== -->
+<div class="modal-overlay" id="pinOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pinTitle" id="pinModal">
+    <h2 id="pinTitle">Staff Access</h2>
+    <p class="hint">Enter the staff PIN to continue.</p>
+    <form id="pinForm" novalidate>
+      <label for="pinInput" class="sr-only">Staff PIN</label>
+      <input type="password" inputmode="numeric" autocomplete="off" class="field-input" id="pinInput" placeholder="PIN">
+      <div class="form-error" id="pinError" role="alert"></div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" type="submit" id="pinSubmitBtn">Unlock</button>
+        <button class="btn btn-outline" type="button" id="pinCancelBtn">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===== Staff PIN creation (first time Event mode is turned on) ===== -->
+<div class="modal-overlay" id="pinCreateOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pinCreateTitle" id="pinCreateModal">
+    <h2 id="pinCreateTitle">Create a Staff PIN</h2>
+    <p class="hint">Set a PIN to protect event settings on this device. You'll enter it again each time you need to make changes.</p>
+    <form id="pinCreateForm" novalidate>
+      <label for="pinCreateInput" class="sr-only">New PIN</label>
+      <input type="password" inputmode="numeric" autocomplete="off" class="field-input" id="pinCreateInput" placeholder="New PIN (4+ digits)">
+      <label for="pinCreateConfirmInput" class="sr-only">Confirm PIN</label>
+      <input type="password" inputmode="numeric" autocomplete="off" class="field-input" id="pinCreateConfirmInput" placeholder="Confirm PIN">
+      <div class="form-error" id="pinCreateError" role="alert"></div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" type="submit" id="pinCreateSubmitBtn">Set PIN</button>
+        <button class="btn btn-outline" type="button" id="pinCreateCancelBtn">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===== Event Settings hub (opened via the gear icon, PIN-gated) ===== -->
+<div class="modal-overlay" id="settingsOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" id="settingsModal">
+    <h2 id="settingsTitle">Event Settings</h2>
+    <p class="hint">Configure this device's live event. Changes save automatically on this browser.</p>
+
+    <div class="settings-field">
+      <label for="resetSecondsInput">Seconds to show each result before returning to the email screen</label>
+      <input type="number" id="resetSecondsInput" class="field-input" min="2" max="60" step="1">
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="openEditorFromSettingsBtn" type="button">Manage Prize Options</button>
+      <button class="btn btn-secondary" id="openStatsFromSettingsBtn" type="button">Prize Stats</button>
+      <button class="btn btn-secondary" id="openEntriesFromSettingsBtn" type="button">Winner Log</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="closeSettingsBtn" type="button">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Winner log: guest email + prize log (opened from Event Settings) ===== -->
+<div class="modal-overlay" id="entriesOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="entriesTitle" id="entriesModal">
+    <h2 id="entriesTitle">Winner Log</h2>
+    <p class="hint">Every guest who submitted an email, with their prize once they've spun. Saved on this device only — nothing is sent anywhere automatically.</p>
+    <p class="stats-total" id="entriesTotal"></p>
+
+    <ul id="entriesList" class="stats-list" aria-label="Guest entries"></ul>
+
+    <p class="stats-confirm" id="entriesConfirmText" hidden>This permanently erases all logged guest entries. This cannot be undone.</p>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="downloadEntriesBtn" type="button">Download CSV</button>
+      <button class="btn btn-danger-outline" id="clearEntriesBtn" type="button">Clear Entries</button>
+      <button class="btn btn-outline" id="cancelClearEntriesBtn" type="button" hidden>Cancel</button>
+      <button class="btn btn-outline" id="closeEntriesBtn" type="button">Close</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (function () {
   "use strict";
@@ -709,6 +877,13 @@
      ============================================================ */
   const STORAGE_KEY = "st-spin-wheel-options-v1";
   const STATS_KEY = "st-spin-wheel-stats-v1";
+  const ENTRIES_KEY = "st-spin-wheel-entries-v1";
+  const PIN_KEY = "st-spin-wheel-pin-v1";
+  const EVENT_MODE_KEY = "st-spin-wheel-event-mode-v1";
+  const RESET_SECONDS_KEY = "st-spin-wheel-reset-seconds-v1";
+  const DEFAULT_RESET_SECONDS = 8;
+  const MIN_RESET_SECONDS = 2;
+  const MAX_RESET_SECONDS = 60;
 
   const DEFAULT_OPTIONS_CONFIG = [
     { text: "Not a winner" },
@@ -826,6 +1001,23 @@
   let dragSrcId = null;                 // id of the option currently being dragged in the editor
   let statsResetPending = false;        // true while the stats "are you sure" confirm is showing
 
+  // Event/kiosk mode state: guests gated behind an email while Event mode is
+  // on; staff tools (options, stats, winner log) live behind a PIN that's
+  // created the first time Event mode is turned on and persists on this
+  // device from then on. Unlocking is a one-time-per-session convenience —
+  // the PIN itself persists, but re-authentication isn't required on every
+  // single staff action within the same working session.
+  let entries = loadEntries();               // [{ id, email, prize, submittedAt, wonAt }]
+  let currentGuestEntryId = null;            // the active guest's entry, or null while the gate is showing
+  let staffPin = loadPin();                  // persisted on this device once set; null until first created
+  let eventModeOn = loadEventMode();         // persisted; whether the guest-facing gate is active
+  let resultDisplaySeconds = loadResetSeconds(); // persisted; how long a result shows before auto-reset
+  let staffUnlocked = false;                 // session-only convenience; resets if the browser restarts
+  let pendingUnlockAction = null;            // staff action to run immediately once the PIN succeeds
+  let entriesResetPending = false;           // true while the entries "are you sure" confirm is showing
+  let gateResetTimer = null;                 // pending auto-return-to-gate timeout
+  let awaitingGateReset = false;             // true while gateResetTimer is armed (survives visibility changes)
+
   const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
   /* ============================================================
@@ -873,6 +1065,65 @@
     entry.count += 1;
     stats[option.id] = entry;
     saveStats();
+  }
+
+  // Guest entries: one row per email submitted at the gate, updated in place
+  // with the prize once that guest spins. Fully local — never sent anywhere.
+  function loadEntries() {
+    try {
+      const raw = localStorage.getItem(ENTRIES_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.filter(e => e && typeof e.email === "string") : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveEntries(list) {
+    localStorage.setItem(ENTRIES_KEY, JSON.stringify(list));
+  }
+
+  // Staff PIN, Event mode on/off, and the result-display timer all persist
+  // on this device so a returning staff member doesn't have to redo setup
+  // every time the browser restarts. The PIN is stored in plaintext — same
+  // "casual deterrent, not real security" tradeoff as everywhere else in
+  // this file, since it's client-side JS either way.
+  function loadPin() {
+    try {
+      return localStorage.getItem(PIN_KEY) || null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function savePin(pin) {
+    localStorage.setItem(PIN_KEY, pin);
+  }
+
+  function loadEventMode() {
+    try {
+      return localStorage.getItem(EVENT_MODE_KEY) === "true";
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function saveEventMode(on) {
+    localStorage.setItem(EVENT_MODE_KEY, on ? "true" : "false");
+  }
+
+  function loadResetSeconds() {
+    try {
+      const n = parseInt(localStorage.getItem(RESET_SECONDS_KEY), 10);
+      return (Number.isFinite(n) && n >= MIN_RESET_SECONDS && n <= MAX_RESET_SECONDS) ? n : DEFAULT_RESET_SECONDS;
+    } catch (e) {
+      return DEFAULT_RESET_SECONDS;
+    }
+  }
+
+  function saveResetSeconds(n) {
+    localStorage.setItem(RESET_SECONDS_KEY, String(n));
   }
 
   /* ============================================================
@@ -1180,6 +1431,7 @@
 
   function spin() {
     if (isSpinning) return;
+    if (eventModeOn && !currentGuestEntryId) return; // gate should be showing; no active guest to spin for
     if (options.length < 2) {
       showResult(null, "Add at least 2 options to spin (use Edit).");
       return;
@@ -1246,9 +1498,21 @@
     const winner = options[actualIndex] !== undefined ? options[actualIndex] : options[expectedIndex];
     const isGrandPrize = !!winner.grandPrize;
     recordWin(winner);
+
+    if (currentGuestEntryId) {
+      const guestEntry = entries.find(e => e.id === currentGuestEntryId);
+      if (guestEntry) {
+        guestEntry.prize = winner.text;
+        guestEntry.wonAt = new Date().toISOString();
+        saveEntries(entries);
+      }
+    }
+
     resultPanel.classList.toggle("grand-prize", isGrandPrize);
     showResult((isGrandPrize ? "\u{1F3C6} " : "") + winner.text, null);
     if (isGrandPrize) triggerConfetti();
+
+    if (eventModeOn) scheduleGateReset();
   }
 
   function showResult(winnerLabel, message) {
@@ -1262,6 +1526,18 @@
     winnerText.textContent = winnerLabel;
   }
 
+  // Resets the wheel back to its "ready to spin" visual state. Shared by
+  // saveEditor() (options changed) and returnToGate() (kiosk auto-reset) so
+  // the two flows can't drift out of sync.
+  function resetWheelDisplay() {
+    currentRotation = 0;
+    drawWheel(currentRotation);
+    clearConfetti();
+    resultPanel.classList.remove("grand-prize");
+    resultPanel.classList.add("empty");
+    winnerText.textContent = "Spin the wheel to see your result!";
+  }
+
   /* ============================================================
      DOM references
      ============================================================ */
@@ -1269,7 +1545,9 @@
   const resultPanel = document.getElementById("resultPanel");
   const winnerText = document.getElementById("winnerText");
 
-  const editOpenBtn = document.getElementById("editOpenBtn");
+  const eventToggleInput = document.getElementById("eventToggleInput");
+  const settingsOpenBtn = document.getElementById("settingsOpenBtn");
+
   const editorOverlay = document.getElementById("editorOverlay");
   const optionsListEl = document.getElementById("optionsList");
   const grandPrizeListEl = document.getElementById("grandPrizeList");
@@ -1281,6 +1559,106 @@
   const formError = document.getElementById("formError");
 
   spinBtn.addEventListener("click", spin);
+
+  /* ============================================================
+     Email gate (kiosk mode)
+     ============================================================ */
+  const gateOverlay = document.getElementById("gateOverlay");
+  const gateForm = document.getElementById("gateForm");
+  const gateEmailInput = document.getElementById("gateEmailInput");
+  const gateError = document.getElementById("gateError");
+
+  function isValidEmail(v) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+  }
+
+  function showGate() {
+    gateError.textContent = "";
+    gateEmailInput.value = "";
+    gateOverlay.classList.add("open");
+    gateEmailInput.focus();
+  }
+
+  function hideGate() {
+    gateOverlay.classList.remove("open");
+  }
+
+  gateForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const email = gateEmailInput.value.trim();
+    if (!isValidEmail(email)) {
+      gateError.textContent = "Please enter a valid email address.";
+      gateEmailInput.focus();
+      return;
+    }
+    gateError.textContent = "";
+    // Log immediately, before the guest spins, so an entry is captured even
+    // if they walk away without playing.
+    const entry = { id: makeId(), email, prize: null, submittedAt: new Date().toISOString(), wonAt: null };
+    entries.push(entry);
+    saveEntries(entries);
+    currentGuestEntryId = entry.id;
+    hideGate();
+    spinBtn.focus();
+  });
+
+  function scheduleGateReset() {
+    if (gateResetTimer) clearTimeout(gateResetTimer);
+    awaitingGateReset = true;
+    gateResetTimer = setTimeout(() => {
+      gateResetTimer = null;
+      returnToGate();
+    }, resultDisplaySeconds * 1000);
+  }
+
+  function returnToGate() {
+    if (gateResetTimer) {
+      clearTimeout(gateResetTimer);
+      gateResetTimer = null;
+    }
+    awaitingGateReset = false;
+    currentGuestEntryId = null;
+    resetWheelDisplay();
+    showGate();
+  }
+
+  // Turning Event mode on requires staff PIN auth (see guardStaffAction);
+  // turning it off doesn't, since that's the "safe" direction — it just
+  // deactivates the guest-facing gate without touching any saved data.
+  function activateEventMode() {
+    eventModeOn = true;
+    saveEventMode(true);
+    eventToggleInput.checked = true;
+    showGate();
+  }
+
+  function deactivateEventMode() {
+    eventModeOn = false;
+    saveEventMode(false);
+    eventToggleInput.checked = false;
+    currentGuestEntryId = null;
+    if (gateResetTimer) {
+      clearTimeout(gateResetTimer);
+      gateResetTimer = null;
+    }
+    awaitingGateReset = false;
+    hideGate();
+    resetWheelDisplay();
+  }
+
+  // If the iPad locks/backgrounds mid-result, cancel the pending timer
+  // rather than let it fire at an unpredictable time later; on return,
+  // snap straight to a clean gate state instead of resuming a stale countdown.
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      if (gateResetTimer) {
+        clearTimeout(gateResetTimer);
+        gateResetTimer = null;
+      }
+    } else if (awaitingGateReset) {
+      returnToGate();
+    }
+  });
 
   // Both lists are persistent drop targets for dropping on empty space
   // (below/between rows); dropping directly on a row is handled per-row
@@ -1303,6 +1681,135 @@
   }
   wireContainerDropZone(optionsListEl, "regular");
   wireContainerDropZone(grandPrizeListEl, "grand");
+
+  /* ============================================================
+     Staff PIN gate — protects the Event toggle and Settings. This is a
+     casual deterrent only (client-side, visible in page source), not real
+     security. The PIN itself persists on this device once created; the
+     "unlocked" state is session-only so staff aren't re-prompted on every
+     tap while running a live event.
+     ============================================================ */
+  const pinOverlay = document.getElementById("pinOverlay");
+  const pinForm = document.getElementById("pinForm");
+  const pinInput = document.getElementById("pinInput");
+  const pinError = document.getElementById("pinError");
+  const pinCancelBtn = document.getElementById("pinCancelBtn");
+
+  const pinCreateOverlay = document.getElementById("pinCreateOverlay");
+  const pinCreateForm = document.getElementById("pinCreateForm");
+  const pinCreateInput = document.getElementById("pinCreateInput");
+  const pinCreateConfirmInput = document.getElementById("pinCreateConfirmInput");
+  const pinCreateError = document.getElementById("pinCreateError");
+  const pinCreateCancelBtn = document.getElementById("pinCreateCancelBtn");
+
+  let lastFocusedElementPin = null;
+  let lastFocusedElementPinCreate = null;
+
+  // Routes a staff-only action through PIN protection: creates a PIN the
+  // very first time (no PIN exists yet on this device), otherwise requires
+  // entering the existing one — unless already unlocked this session.
+  function guardStaffAction(action) {
+    if (staffUnlocked) {
+      action();
+      return;
+    }
+    pendingUnlockAction = action;
+    if (!staffPin) {
+      openPinCreate();
+    } else {
+      openPinGate();
+    }
+  }
+
+  function openPinGate() {
+    pinError.textContent = "";
+    pinInput.value = "";
+    pinOverlay.classList.add("open");
+    lastFocusedElementPin = document.activeElement;
+    pinInput.focus();
+    document.addEventListener("keydown", onPinModalKeydown);
+  }
+
+  function closePinGate() {
+    pinOverlay.classList.remove("open");
+    document.removeEventListener("keydown", onPinModalKeydown);
+    pendingUnlockAction = null;
+    if (lastFocusedElementPin) lastFocusedElementPin.focus();
+  }
+
+  function onPinModalKeydown(e) {
+    if (e.key === "Escape") closePinGate();
+  }
+
+  pinForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (pinInput.value === staffPin) {
+      staffUnlocked = true;
+      pinOverlay.classList.remove("open");
+      document.removeEventListener("keydown", onPinModalKeydown);
+      const action = pendingUnlockAction;
+      pendingUnlockAction = null;
+      if (action) action();
+    } else {
+      pinError.textContent = "Incorrect PIN.";
+      pinInput.value = "";
+      pinInput.focus();
+    }
+  });
+
+  pinCancelBtn.addEventListener("click", closePinGate);
+  pinOverlay.addEventListener("click", (e) => {
+    if (e.target === pinOverlay) closePinGate();
+  });
+
+  function openPinCreate() {
+    pinCreateError.textContent = "";
+    pinCreateInput.value = "";
+    pinCreateConfirmInput.value = "";
+    pinCreateOverlay.classList.add("open");
+    lastFocusedElementPinCreate = document.activeElement;
+    pinCreateInput.focus();
+    document.addEventListener("keydown", onPinCreateModalKeydown);
+  }
+
+  function closePinCreate() {
+    pinCreateOverlay.classList.remove("open");
+    document.removeEventListener("keydown", onPinCreateModalKeydown);
+    pendingUnlockAction = null;
+    if (lastFocusedElementPinCreate) lastFocusedElementPinCreate.focus();
+  }
+
+  function onPinCreateModalKeydown(e) {
+    if (e.key === "Escape") closePinCreate();
+  }
+
+  pinCreateForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const value = pinCreateInput.value;
+    if (value.length < 4) {
+      pinCreateError.textContent = "PIN must be at least 4 characters.";
+      return;
+    }
+    if (value !== pinCreateConfirmInput.value) {
+      pinCreateError.textContent = "PINs don't match.";
+      pinCreateConfirmInput.value = "";
+      pinCreateConfirmInput.focus();
+      return;
+    }
+    staffPin = value;
+    savePin(staffPin);
+    staffUnlocked = true;
+    pinCreateOverlay.classList.remove("open");
+    document.removeEventListener("keydown", onPinCreateModalKeydown);
+    const action = pendingUnlockAction;
+    pendingUnlockAction = null;
+    if (action) action();
+  });
+
+  pinCreateCancelBtn.addEventListener("click", closePinCreate);
+  pinCreateOverlay.addEventListener("click", (e) => {
+    if (e.target === pinCreateOverlay) closePinCreate();
+  });
 
   /* ============================================================
      Editor modal: open/close
@@ -1345,7 +1852,6 @@
     }
   }
 
-  editOpenBtn.addEventListener("click", openEditor);
   cancelBtn.addEventListener("click", closeEditor);
   editorOverlay.addEventListener("click", (e) => {
     if (e.target === editorOverlay) closeEditor();
@@ -1631,12 +2137,7 @@
     formError.textContent = "";
     options = cleaned;
     saveOptions(options);
-    currentRotation = 0;
-    drawWheel(currentRotation);
-    clearConfetti();
-    resultPanel.classList.remove("grand-prize");
-    resultPanel.classList.add("empty");
-    winnerText.textContent = "Spin the wheel to see your result!";
+    resetWheelDisplay();
     closeEditor();
   }
 
@@ -1653,7 +2154,6 @@
   /* ============================================================
      Stats modal: win frequency per option, saved on this device
      ============================================================ */
-  const statsOpenBtn = document.getElementById("statsOpenBtn");
   const statsOverlay = document.getElementById("statsOverlay");
   const statsListEl = document.getElementById("statsList");
   const statsTotalEl = document.getElementById("statsTotal");
@@ -1742,7 +2242,6 @@
     }
   }
 
-  statsOpenBtn.addEventListener("click", openStats);
   closeStatsBtn.addEventListener("click", closeStats);
   cancelResetStatsBtn.addEventListener("click", () => setStatsResetPending(false));
   statsOverlay.addEventListener("click", (e) => {
@@ -1759,6 +2258,232 @@
     setStatsResetPending(false);
     renderStatsList();
   });
+
+  /* ============================================================
+     Winner log modal: guest email + prize log (kiosk mode)
+     ============================================================ */
+  const entriesOverlay = document.getElementById("entriesOverlay");
+  const entriesTotalEl = document.getElementById("entriesTotal");
+  const entriesListEl = document.getElementById("entriesList");
+  const entriesConfirmText = document.getElementById("entriesConfirmText");
+  const downloadEntriesBtn = document.getElementById("downloadEntriesBtn");
+  const clearEntriesBtn = document.getElementById("clearEntriesBtn");
+  const cancelClearEntriesBtn = document.getElementById("cancelClearEntriesBtn");
+  const closeEntriesBtn = document.getElementById("closeEntriesBtn");
+
+  let lastFocusedElementEntries = null;
+
+  function renderEntriesTotal() {
+    const completed = entries.filter(e => e.prize).length;
+    entriesTotalEl.textContent = "Total entries: " + entries.length + " (" + completed + " completed spins)";
+  }
+
+  function formatEntryTime(iso) {
+    if (!iso) return "";
+    return new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  }
+
+  // Visible on-screen list (not just the CSV export) so staff can settle a
+  // "who won what" dispute on the spot without downloading anything.
+  function renderEntriesList() {
+    entriesListEl.innerHTML = "";
+    const sorted = entries.slice().sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+
+    if (sorted.length === 0) {
+      const empty = document.createElement("li");
+      empty.className = "option-row-empty";
+      empty.textContent = "No entries yet.";
+      entriesListEl.appendChild(empty);
+      return;
+    }
+
+    sorted.forEach(e => {
+      const li = document.createElement("li");
+      li.className = "stats-row";
+
+      const label = document.createElement("span");
+      label.className = "stats-label";
+      label.textContent = e.email + " — " + (e.prize || "(no spin yet)");
+
+      const time = document.createElement("span");
+      time.className = "stats-count";
+      time.textContent = formatEntryTime(e.wonAt || e.submittedAt);
+
+      li.appendChild(label);
+      li.appendChild(time);
+      entriesListEl.appendChild(li);
+    });
+  }
+
+  function setEntriesResetPending(pending) {
+    entriesResetPending = pending;
+    entriesConfirmText.hidden = !pending;
+    cancelClearEntriesBtn.hidden = !pending;
+    closeEntriesBtn.hidden = pending;
+    clearEntriesBtn.textContent = pending ? "Yes, clear entries" : "Clear Entries";
+  }
+
+  function openEntries() {
+    setEntriesResetPending(false);
+    renderEntriesTotal();
+    renderEntriesList();
+    entriesOverlay.classList.add("open");
+    lastFocusedElementEntries = document.activeElement;
+    downloadEntriesBtn.focus();
+    document.addEventListener("keydown", onEntriesModalKeydown);
+  }
+
+  function closeEntries() {
+    entriesOverlay.classList.remove("open");
+    setEntriesResetPending(false);
+    document.removeEventListener("keydown", onEntriesModalKeydown);
+    if (lastFocusedElementEntries) lastFocusedElementEntries.focus();
+  }
+
+  function onEntriesModalKeydown(e) {
+    if (e.key === "Escape") {
+      if (entriesResetPending) {
+        setEntriesResetPending(false);
+        return;
+      }
+      closeEntries();
+    }
+  }
+
+  function csvEscape(value) {
+    const s = String(value == null ? "" : value);
+    return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+
+  // Prefers the Web Share API (native share sheet — AirDrop, Mail, Save to
+  // Files, etc.) so non-technical staff on an iPad/Android don't have to
+  // hunt for a silently-downloaded file. Falls back to a direct download
+  // link on browsers/contexts without file sharing support (e.g. file://).
+  async function downloadEntriesCsv() {
+    const header = ["Email", "Prize", "Submitted At", "Won At"];
+    const rows = entries.map(e => [e.email, e.prize || "", e.submittedAt || "", e.wonAt || ""]);
+    const csv = [header, ...rows].map(r => r.map(csvEscape).join(",")).join("\r\n");
+    const filename = "st-spin-wheel-entries-" + new Date().toISOString().slice(0, 10) + ".csv";
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+
+    if (navigator.canShare && navigator.share) {
+      try {
+        const file = new File([blob], filename, { type: "text/csv" });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: "Guest Entries" });
+          return;
+        }
+      } catch (err) {
+        if (err && err.name === "AbortError") return; // user cancelled the share sheet
+        // otherwise fall through to a direct download
+      }
+    }
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  closeEntriesBtn.addEventListener("click", closeEntries);
+  cancelClearEntriesBtn.addEventListener("click", () => setEntriesResetPending(false));
+  entriesOverlay.addEventListener("click", (e) => {
+    if (e.target === entriesOverlay) closeEntries();
+  });
+  downloadEntriesBtn.addEventListener("click", downloadEntriesCsv);
+
+  clearEntriesBtn.addEventListener("click", () => {
+    if (!entriesResetPending) {
+      setEntriesResetPending(true);
+      return;
+    }
+    entries = [];
+    saveEntries(entries);
+    setEntriesResetPending(false);
+    renderEntriesTotal();
+    renderEntriesList();
+  });
+
+  /* ============================================================
+     Event control (top-right toggle + gear) and the Settings hub
+     ============================================================ */
+  const settingsOverlay = document.getElementById("settingsOverlay");
+  const resetSecondsInput = document.getElementById("resetSecondsInput");
+  const openEditorFromSettingsBtn = document.getElementById("openEditorFromSettingsBtn");
+  const openStatsFromSettingsBtn = document.getElementById("openStatsFromSettingsBtn");
+  const openEntriesFromSettingsBtn = document.getElementById("openEntriesFromSettingsBtn");
+  const closeSettingsBtn = document.getElementById("closeSettingsBtn");
+
+  let lastFocusedElementSettings = null;
+
+  function openSettings() {
+    resetSecondsInput.value = String(resultDisplaySeconds);
+    settingsOverlay.classList.add("open");
+    lastFocusedElementSettings = document.activeElement;
+    resetSecondsInput.focus();
+    document.addEventListener("keydown", onSettingsModalKeydown);
+  }
+
+  function closeSettings() {
+    settingsOverlay.classList.remove("open");
+    document.removeEventListener("keydown", onSettingsModalKeydown);
+    if (lastFocusedElementSettings) lastFocusedElementSettings.focus();
+  }
+
+  function onSettingsModalKeydown(e) {
+    if (e.key === "Escape") closeSettings();
+  }
+
+  resetSecondsInput.addEventListener("change", () => {
+    const n = parseInt(resetSecondsInput.value, 10);
+    if (Number.isFinite(n) && n >= MIN_RESET_SECONDS && n <= MAX_RESET_SECONDS) {
+      resultDisplaySeconds = n;
+      saveResetSeconds(n);
+    } else {
+      resetSecondsInput.value = String(resultDisplaySeconds); // revert invalid input
+    }
+  });
+
+  closeSettingsBtn.addEventListener("click", closeSettings);
+  settingsOverlay.addEventListener("click", (e) => {
+    if (e.target === settingsOverlay) closeSettings();
+  });
+
+  // Each of these leaves Settings to open its own modal, rather than
+  // stacking modals on top of each other.
+  openEditorFromSettingsBtn.addEventListener("click", () => {
+    closeSettings();
+    openEditor();
+  });
+  openStatsFromSettingsBtn.addEventListener("click", () => {
+    closeSettings();
+    openStats();
+  });
+  openEntriesFromSettingsBtn.addEventListener("click", () => {
+    closeSettings();
+    openEntries();
+  });
+
+  // Turning Event mode on is staff-gated (PIN); turning it off isn't, since
+  // that's always the safe direction. The checkbox is reverted and only
+  // actually flips once guardStaffAction's action fires.
+  eventToggleInput.addEventListener("change", () => {
+    if (eventToggleInput.checked) {
+      eventToggleInput.checked = false;
+      guardStaffAction(() => {
+        activateEventMode();
+        openSettings();
+      });
+    } else {
+      deactivateEventMode();
+    }
+  });
+
+  settingsOpenBtn.addEventListener("click", () => guardStaffAction(openSettings));
 
   /* ============================================================
      Init
@@ -1778,6 +2503,9 @@
     } else {
       requestAnimationFrame(idlePulseFrame);
     }
+    // Resume whatever this device's Event mode state was left in.
+    eventToggleInput.checked = eventModeOn;
+    if (eventModeOn) showGate();
   }
 
   window.addEventListener("resize", () => drawWheel(currentRotation));
