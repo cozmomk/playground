@@ -305,6 +305,72 @@
     margin-bottom: 0.35rem;
   }
 
+  .settings-section {
+    margin-bottom: 1.25rem;
+  }
+
+  .settings-section h3 {
+    margin: 0 0 0.6rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--railway-gray);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+
+  .settings-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .settings-nav-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    background: var(--bg-light);
+    border: none;
+    border-radius: 12px;
+    padding: 0.75rem 0.9rem;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s ease;
+  }
+
+  .settings-nav-row:hover { background: #e9edf1; }
+
+  .settings-nav-icon {
+    font-size: 1.4rem;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+
+  .settings-nav-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: 0.1rem;
+  }
+
+  .settings-nav-title {
+    font-weight: 700;
+    color: var(--wave-blue);
+    font-size: 0.95rem;
+  }
+
+  .settings-nav-sub {
+    font-size: 0.78rem;
+    color: var(--railway-gray);
+  }
+
+  .settings-nav-arrow {
+    font-size: 1.4rem;
+    color: var(--railway-gray);
+    flex-shrink: 0;
+  }
+
   /* ===== Stats modal contents ===== */
   .stats-total {
     margin: 0 0 0.75rem;
@@ -387,6 +453,18 @@
      Event control in the top corner always stays reachable above it, and a
      higher z-index than the confetti canvas (40) so it isn't peeked through. */
   .gate-overlay { z-index: 45; }
+
+  .gate-last-prize {
+    background: var(--bg-light);
+    border-left: 4px solid var(--wave-teal);
+    border-radius: 8px;
+    padding: 0.6rem 0.8rem;
+    margin: 0 0 1rem;
+    font-size: 0.85rem;
+    color: var(--wave-blue);
+  }
+
+  .gate-last-prize strong { color: var(--wave-teal); }
 
   .modal {
     background: var(--card-white);
@@ -718,6 +796,7 @@
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="gateTitle" id="gateModal">
     <h2 id="gateTitle">Enter your email to spin!</h2>
     <p class="hint">We'll use this to award your prize. One spin per guest.</p>
+    <p class="gate-last-prize" id="gateLastPrize" hidden></p>
     <form id="gateForm" novalidate>
       <label for="gateEmailInput" class="sr-only">Email address</label>
       <input type="email" id="gateEmailInput" class="field-input" placeholder="you@example.com" autocomplete="off" inputmode="email" required>
@@ -829,19 +908,47 @@
 <!-- ===== Event Settings hub (opened via the gear icon, PIN-gated) ===== -->
 <div class="modal-overlay" id="settingsOverlay">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" id="settingsModal">
-    <h2 id="settingsTitle">Event Settings</h2>
+    <h2 id="settingsTitle">&#9881;&#65039; Event Settings</h2>
     <p class="hint">Configure this device's live event. Changes save automatically on this browser.</p>
 
-    <div class="settings-field">
-      <label for="resetSecondsInput">Seconds to show each result before returning to the email screen</label>
-      <input type="number" id="resetSecondsInput" class="field-input" min="2" max="60" step="1">
+    <div class="settings-section">
+      <h3>Guest Experience</h3>
+      <div class="settings-field">
+        <label for="resetSecondsInput">Seconds to show each result before returning to the email screen</label>
+        <input type="number" id="resetSecondsInput" class="field-input" min="2" max="60" step="1">
+      </div>
     </div>
 
-    <div class="modal-actions">
-      <button class="btn btn-secondary" id="openEditorFromSettingsBtn" type="button">Manage Prize Options</button>
-      <button class="btn btn-secondary" id="openStatsFromSettingsBtn" type="button">Prize Stats</button>
-      <button class="btn btn-secondary" id="openEntriesFromSettingsBtn" type="button">Winner Log</button>
+    <div class="settings-section">
+      <h3>Manage</h3>
+      <div class="settings-nav">
+        <button class="settings-nav-row" id="openEditorFromSettingsBtn" type="button">
+          <span class="settings-nav-icon" aria-hidden="true">&#127942;</span>
+          <span class="settings-nav-text">
+            <span class="settings-nav-title">Prize Options</span>
+            <span class="settings-nav-sub">Edit wheel options, colors, and grand prizes</span>
+          </span>
+          <span class="settings-nav-arrow" aria-hidden="true">&#8250;</span>
+        </button>
+        <button class="settings-nav-row" id="openStatsFromSettingsBtn" type="button">
+          <span class="settings-nav-icon" aria-hidden="true">&#128202;</span>
+          <span class="settings-nav-text">
+            <span class="settings-nav-title">Prize Stats</span>
+            <span class="settings-nav-sub">Win frequency for each option</span>
+          </span>
+          <span class="settings-nav-arrow" aria-hidden="true">&#8250;</span>
+        </button>
+        <button class="settings-nav-row" id="openEntriesFromSettingsBtn" type="button">
+          <span class="settings-nav-icon" aria-hidden="true">&#128203;</span>
+          <span class="settings-nav-text">
+            <span class="settings-nav-title">Winner Log</span>
+            <span class="settings-nav-sub">Guest emails, prizes, and CSV export</span>
+          </span>
+          <span class="settings-nav-arrow" aria-hidden="true">&#8250;</span>
+        </button>
+      </div>
     </div>
+
     <div class="modal-actions">
       <button class="btn btn-outline" id="closeSettingsBtn" type="button">Close</button>
     </div>
@@ -958,6 +1065,12 @@
 
   function isLightColor(hex) {
     return relativeLuminance(hex) > 0.45;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[c]));
   }
 
   // Options are { id, text, grandPrize, color }. The id gives each option a
@@ -1567,14 +1680,31 @@
   const gateForm = document.getElementById("gateForm");
   const gateEmailInput = document.getElementById("gateEmailInput");
   const gateError = document.getElementById("gateError");
+  const gateLastPrizeEl = document.getElementById("gateLastPrize");
 
   function isValidEmail(v) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
   }
 
+  // Shows the most recently won prize on the gate itself, so the previous
+  // guest can't contest what they won — it's right there on screen for the
+  // next person (and staff) to see.
+  function updateGateLastPrize() {
+    const won = entries.filter(e => e.prize && e.wonAt);
+    won.sort((a, b) => new Date(b.wonAt) - new Date(a.wonAt));
+    const last = won[0];
+    if (last) {
+      gateLastPrizeEl.innerHTML = "Last prize won: <strong>" + escapeHtml(last.prize) + "</strong>";
+      gateLastPrizeEl.hidden = false;
+    } else {
+      gateLastPrizeEl.hidden = true;
+    }
+  }
+
   function showGate() {
     gateError.textContent = "";
     gateEmailInput.value = "";
+    updateGateLastPrize();
     gateOverlay.classList.add("open");
     gateEmailInput.focus();
   }
@@ -1599,7 +1729,7 @@
     saveEntries(entries);
     currentGuestEntryId = entry.id;
     hideGate();
-    spinBtn.focus();
+    spin();
   });
 
   function scheduleGateReset() {
