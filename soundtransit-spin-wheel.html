@@ -193,7 +193,7 @@
 
   .result-panel.empty .label { color: var(--railway-gray); }
 
-  /* Grand prize result styling */
+  /* Grand prize (trophy tier) result styling */
   .result-panel.grand-prize {
     background: linear-gradient(135deg, var(--action-orange), var(--hilite-yellow));
     color: var(--wave-blue);
@@ -201,6 +201,31 @@
   }
 
   .result-panel.grand-prize .label { color: var(--wave-blue); }
+
+  /* Sad-tier "womp womp" result styling */
+  .result-panel.sad-outcome {
+    background: #E9ECEF;
+    color: var(--railway-gray);
+  }
+
+  .result-panel.sad-outcome .label { color: var(--railway-gray); }
+
+  @keyframes womp-droop {
+    0% { transform: translateY(0) rotate(0deg); }
+    35% { transform: translateY(6px) rotate(-8deg); }
+    55% { transform: translateY(2px) rotate(-3deg); }
+    80% { transform: translateY(14px) rotate(-10deg); }
+    100% { transform: translateY(10px) rotate(-7deg); }
+  }
+
+  .result-panel.sad-outcome .winner {
+    display: inline-block;
+    animation: womp-droop 900ms ease-out both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .result-panel.sad-outcome .winner { animation: none; }
+  }
 
   /* Full-screen confetti overlay */
   #confettiCanvas {
@@ -213,8 +238,7 @@
   }
 
   /* ===== Event control (top-right): toggle + settings gear =====
-     Single consolidated entry point for everything staff-related — replaces
-     the old separate Edit/Stats/Entries corner buttons. */
+     Single consolidated entry point for everything staff-related. */
   .event-control {
     position: fixed;
     top: 1rem;
@@ -305,73 +329,66 @@
     margin-bottom: 0.35rem;
   }
 
-  .settings-section {
-    margin-bottom: 1.25rem;
-  }
-
-  .settings-section h3 {
-    margin: 0 0 0.6rem;
-    font-size: 0.78rem;
-    font-weight: 700;
-    color: var(--railway-gray);
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-  }
-
-  .settings-nav {
+  /* ===== Settings tabs ===== */
+  .tab-bar {
     display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.4rem;
+    margin: 0.5rem 0 1.25rem;
+    border-bottom: 2px solid #e2e6ea;
   }
 
-  .settings-nav-row {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    width: 100%;
-    background: var(--bg-light);
+  .tab-btn {
+    background: none;
     border: none;
-    border-radius: 12px;
-    padding: 0.75rem 0.9rem;
-    cursor: pointer;
-    text-align: left;
-    transition: background 0.15s ease;
-  }
-
-  .settings-nav-row:hover { background: #e9edf1; }
-
-  .settings-nav-icon {
-    font-size: 1.4rem;
-    flex-shrink: 0;
-    line-height: 1;
-  }
-
-  .settings-nav-text {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    gap: 0.1rem;
-  }
-
-  .settings-nav-title {
+    border-bottom: 3px solid transparent;
+    padding: 0.6rem 0.9rem;
+    margin-bottom: -2px;
     font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--railway-gray);
+    cursor: pointer;
+  }
+
+  .tab-btn.active {
     color: var(--wave-blue);
-    font-size: 0.95rem;
+    border-bottom-color: var(--action-pink);
   }
 
-  .settings-nav-sub {
-    font-size: 0.78rem;
-    color: var(--railway-gray);
-  }
+  .tab-btn:hover { color: var(--wave-blue); }
 
-  .settings-nav-arrow {
-    font-size: 1.4rem;
-    color: var(--railway-gray);
+  .tab-panel[hidden] { display: none; }
+
+  /* ===== Prize tier control (sad / happy / trophy) per option row ===== */
+  .prize-tier-control {
+    display: inline-flex;
+    border-radius: 999px;
+    background: var(--bg-light);
+    padding: 2px;
+    gap: 2px;
     flex-shrink: 0;
   }
 
-  /* ===== Stats modal contents ===== */
+  .tier-btn {
+    border: none;
+    background: transparent;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.35;
+    transition: opacity 0.15s ease, background 0.15s ease;
+  }
+
+  .tier-btn:hover { opacity: 0.7; }
+
+  .tier-btn[aria-pressed="true"] { opacity: 1; }
+  .tier-btn.tier-sad[aria-pressed="true"] { background: #d7dde2; }
+  .tier-btn.tier-happy[aria-pressed="true"] { background: #cdeee2; }
+  .tier-btn.tier-trophy[aria-pressed="true"] { background: var(--hilite-yellow); }
+
+  /* ===== Stats / Logs list contents (shared) ===== */
   .stats-total {
     margin: 0 0 0.75rem;
     font-weight: 700;
@@ -449,7 +466,7 @@
   .modal-overlay.open { display: flex; }
 
   /* Email gate (kiosk mode) reuses .modal-overlay's hidden-by-default/.open
-     behavior, just at a lower z-index than the staff modals (50) so the
+     behavior, just at a lower z-index than the staff modal (50) so the
      Event control in the top corner always stays reachable above it, and a
      higher z-index than the confetti canvas (40) so it isn't peeked through. */
   .gate-overlay { z-index: 45; }
@@ -489,8 +506,6 @@
     font-size: 0.85rem;
   }
 
-  /* Shared row list styling, used by both the Options list and the
-     Grand Prize list — dragging moves a row between the two. */
   .option-rows {
     list-style: none;
     margin: 0;
@@ -528,6 +543,12 @@
   .option-row.drag-over {
     outline: 2px dashed var(--wave-teal);
     outline-offset: -2px;
+  }
+
+  #optionsList.drag-over {
+    outline: 2px dashed var(--wave-teal);
+    outline-offset: 4px;
+    border-radius: 12px;
   }
 
   .option-row-empty {
@@ -625,51 +646,6 @@
 
   .drag-handle:hover { background: #e2e6ea; }
   .drag-handle:active { cursor: grabbing; }
-
-  /* ===== Grand Prize section (top of editor) ===== */
-  .grand-prize-section {
-    margin-bottom: 1.25rem;
-  }
-
-  .grand-prize-section h3 {
-    margin: 0 0 0.15rem;
-    font-size: 1rem;
-    color: var(--wave-blue);
-  }
-
-  .grand-prize-section p.hint {
-    margin: 0 0 0.6rem;
-  }
-
-  #grandPrizeList {
-    min-height: 3.5rem;
-    border: 2px dashed var(--hilite-yellow);
-    border-radius: 12px;
-    background: #FFF9EC;
-    padding: 0.6rem;
-  }
-
-  #grandPrizeList.drag-over {
-    border-color: var(--action-orange);
-    background: #FFF1D6;
-  }
-
-  #optionsList.drag-over {
-    outline: 2px dashed var(--wave-teal);
-    outline-offset: 4px;
-    border-radius: 12px;
-  }
-
-  .options-section {
-    border-top: 1px solid #e2e6ea;
-    padding-top: 1rem;
-  }
-
-  .options-section h3 {
-    margin: 0 0 0.6rem;
-    font-size: 1rem;
-    color: var(--wave-blue);
-  }
 
   .modal-actions {
     display: flex;
@@ -816,59 +792,6 @@
   <button class="event-settings-btn" id="settingsOpenBtn" type="button" aria-label="Event settings" aria-haspopup="dialog" aria-controls="settingsModal" title="Event settings">&#9881;</button>
 </div>
 
-<!-- ===== Options editor modal ===== -->
-<div class="modal-overlay" id="editorOverlay">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editorTitle" id="editorModal">
-    <h2 id="editorTitle">Edit Wheel Options</h2>
-    <p class="hint">Drag an option's &#9776; handle between the two lists to mark or unmark it as a Grand Prize (or focus the handle and press Enter). Landing on a Grand Prize option triggers a confetti celebration. At least 2 options total are required to spin. Changes are saved to this browser's local storage.</p>
-
-    <div class="grand-prize-section">
-      <h3>&#127942; Grand Prize</h3>
-      <p class="hint">Options here trigger a confetti celebration when landed on.</p>
-      <ul id="grandPrizeList" class="option-rows" aria-label="Grand prize options"></ul>
-    </div>
-
-    <div class="options-section">
-      <h3>Options</h3>
-
-      <div class="add-row">
-        <label for="newOptionInput" class="sr-only">New option text</label>
-        <input type="text" id="newOptionInput" placeholder="Add a new option&hellip;" maxlength="60">
-        <button class="btn btn-secondary" id="addOptionBtn" type="button">+ Add Option</button>
-      </div>
-
-      <div class="form-error" id="formError" role="alert"></div>
-
-      <ul id="optionsList" class="option-rows" aria-label="Current wheel options"></ul>
-    </div>
-
-    <div class="modal-actions">
-      <button class="btn btn-primary" id="saveBtn" type="button">Save Changes</button>
-      <button class="btn btn-outline" id="cancelBtn" type="button">Cancel</button>
-      <button class="btn btn-danger-outline" id="resetBtn" type="button">Reset to Defaults</button>
-    </div>
-  </div>
-</div>
-
-<!-- ===== Win statistics modal (opened from Event Settings) ===== -->
-<div class="modal-overlay" id="statsOverlay">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="statsTitle" id="statsModal">
-    <h2 id="statsTitle">Spin Statistics</h2>
-    <p class="hint">How often each option has come up, saved on this device.</p>
-    <p class="stats-total" id="statsTotal"></p>
-
-    <ul id="statsList" class="stats-list" aria-label="Win counts per option"></ul>
-
-    <p class="stats-confirm" id="statsConfirmText" hidden>This permanently erases all recorded spin stats. This cannot be undone.</p>
-
-    <div class="modal-actions">
-      <button class="btn btn-danger-outline" id="resetStatsBtn" type="button">Reset Stats</button>
-      <button class="btn btn-outline" id="cancelResetStatsBtn" type="button" hidden>Cancel</button>
-      <button class="btn btn-outline" id="closeStatsBtn" type="button">Close</button>
-    </div>
-  </div>
-</div>
-
 <!-- ===== Staff PIN entry (subsequent unlocks, once a PIN exists) ===== -->
 <div class="modal-overlay" id="pinOverlay">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pinTitle" id="pinModal">
@@ -905,72 +828,76 @@
   </div>
 </div>
 
-<!-- ===== Event Settings hub (opened via the gear icon, PIN-gated) ===== -->
+<!-- ===== Event Settings (opened via the gear icon, PIN-gated) ===== -->
 <div class="modal-overlay" id="settingsOverlay">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" id="settingsModal">
-    <h2 id="settingsTitle">&#9881;&#65039; Event Settings</h2>
-    <p class="hint">Configure this device's live event. Changes save automatically on this browser.</p>
+    <h2 id="settingsTitle">Event Settings</h2>
 
-    <div class="settings-section">
-      <h3>Guest Experience</h3>
+    <div class="tab-bar" role="tablist" aria-label="Event Settings sections">
+      <button class="tab-btn active" id="tabBtnWheel" type="button" role="tab" aria-selected="true" aria-controls="tabPanelWheel" data-tab="wheel">Wheel</button>
+      <button class="tab-btn" id="tabBtnLogs" type="button" role="tab" aria-selected="false" aria-controls="tabPanelLogs" data-tab="logs">Logs</button>
+      <button class="tab-btn" id="tabBtnStats" type="button" role="tab" aria-selected="false" aria-controls="tabPanelStats" data-tab="stats">Stats</button>
+    </div>
+
+    <!-- ===== Wheel tab ===== -->
+    <div class="tab-panel" id="tabPanelWheel" role="tabpanel" aria-labelledby="tabBtnWheel">
       <div class="settings-field">
         <label for="resetSecondsInput">Seconds to show each result before returning to the email screen</label>
         <input type="number" id="resetSecondsInput" class="field-input" min="2" max="60" step="1">
       </div>
+
+      <p class="hint">Tap &#128542;/&#128578;/&#127942; on each option to set what happens when it's landed on: &#128542; plays a "womp womp" letdown with no prize, &#128578; is a normal win with no effect, and &#127942; triggers the confetti celebration. At least 2 options total are required to spin. Changes are saved to this browser's local storage.</p>
+
+      <div class="add-row">
+        <label for="newOptionInput" class="sr-only">New option text</label>
+        <input type="text" id="newOptionInput" placeholder="Add a new option&hellip;" maxlength="60">
+        <button class="btn btn-secondary" id="addOptionBtn" type="button">+ Add Option</button>
+      </div>
+
+      <div class="form-error" id="formError" role="alert"></div>
+
+      <ul id="optionsList" class="option-rows" aria-label="Current wheel options"></ul>
+
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="saveBtn" type="button">Save Changes</button>
+        <button class="btn btn-outline" id="cancelBtn" type="button">Cancel</button>
+        <button class="btn btn-danger-outline" id="resetBtn" type="button">Reset to Defaults</button>
+      </div>
     </div>
 
-    <div class="settings-section">
-      <h3>Manage</h3>
-      <div class="settings-nav">
-        <button class="settings-nav-row" id="openEditorFromSettingsBtn" type="button">
-          <span class="settings-nav-icon" aria-hidden="true">&#127942;</span>
-          <span class="settings-nav-text">
-            <span class="settings-nav-title">Prize Options</span>
-            <span class="settings-nav-sub">Edit wheel options, colors, and grand prizes</span>
-          </span>
-          <span class="settings-nav-arrow" aria-hidden="true">&#8250;</span>
-        </button>
-        <button class="settings-nav-row" id="openStatsFromSettingsBtn" type="button">
-          <span class="settings-nav-icon" aria-hidden="true">&#128202;</span>
-          <span class="settings-nav-text">
-            <span class="settings-nav-title">Prize Stats</span>
-            <span class="settings-nav-sub">Win frequency for each option</span>
-          </span>
-          <span class="settings-nav-arrow" aria-hidden="true">&#8250;</span>
-        </button>
-        <button class="settings-nav-row" id="openEntriesFromSettingsBtn" type="button">
-          <span class="settings-nav-icon" aria-hidden="true">&#128203;</span>
-          <span class="settings-nav-text">
-            <span class="settings-nav-title">Winner Log</span>
-            <span class="settings-nav-sub">Guest emails, prizes, and CSV export</span>
-          </span>
-          <span class="settings-nav-arrow" aria-hidden="true">&#8250;</span>
-        </button>
+    <!-- ===== Logs tab ===== -->
+    <div class="tab-panel" id="tabPanelLogs" role="tabpanel" aria-labelledby="tabBtnLogs" hidden>
+      <p class="hint">Every spin is recorded here — email is included only when the Event gate collected one for that spin. Saved on this device only; nothing is sent anywhere automatically.</p>
+      <p class="stats-total" id="entriesTotal"></p>
+
+      <ul id="entriesList" class="stats-list" aria-label="Spin log"></ul>
+
+      <p class="stats-confirm" id="entriesConfirmText" hidden>This permanently erases all logged spin records. This cannot be undone.</p>
+
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="downloadEntriesBtn" type="button">Download CSV</button>
+        <button class="btn btn-danger-outline" id="clearEntriesBtn" type="button">Clear Records</button>
+        <button class="btn btn-outline" id="cancelClearEntriesBtn" type="button" hidden>Cancel</button>
+      </div>
+    </div>
+
+    <!-- ===== Stats tab ===== -->
+    <div class="tab-panel" id="tabPanelStats" role="tabpanel" aria-labelledby="tabBtnStats" hidden>
+      <p class="hint">How often each option has come up, saved on this device.</p>
+      <p class="stats-total" id="statsTotal"></p>
+
+      <ul id="statsList" class="stats-list" aria-label="Win counts per option"></ul>
+
+      <p class="stats-confirm" id="statsConfirmText" hidden>This permanently erases all recorded spin stats. This cannot be undone.</p>
+
+      <div class="modal-actions">
+        <button class="btn btn-danger-outline" id="resetStatsBtn" type="button">Reset Stats</button>
+        <button class="btn btn-outline" id="cancelResetStatsBtn" type="button" hidden>Cancel</button>
       </div>
     </div>
 
     <div class="modal-actions">
       <button class="btn btn-outline" id="closeSettingsBtn" type="button">Close</button>
-    </div>
-  </div>
-</div>
-
-<!-- ===== Winner log: guest email + prize log (opened from Event Settings) ===== -->
-<div class="modal-overlay" id="entriesOverlay">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="entriesTitle" id="entriesModal">
-    <h2 id="entriesTitle">Winner Log</h2>
-    <p class="hint">Every guest who submitted an email, with their prize once they've spun. Saved on this device only — nothing is sent anywhere automatically.</p>
-    <p class="stats-total" id="entriesTotal"></p>
-
-    <ul id="entriesList" class="stats-list" aria-label="Guest entries"></ul>
-
-    <p class="stats-confirm" id="entriesConfirmText" hidden>This permanently erases all logged guest entries. This cannot be undone.</p>
-
-    <div class="modal-actions">
-      <button class="btn btn-secondary" id="downloadEntriesBtn" type="button">Download CSV</button>
-      <button class="btn btn-danger-outline" id="clearEntriesBtn" type="button">Clear Entries</button>
-      <button class="btn btn-outline" id="cancelClearEntriesBtn" type="button" hidden>Cancel</button>
-      <button class="btn btn-outline" id="closeEntriesBtn" type="button">Close</button>
     </div>
   </div>
 </div>
@@ -991,16 +918,17 @@
   const DEFAULT_RESET_SECONDS = 8;
   const MIN_RESET_SECONDS = 2;
   const MAX_RESET_SECONDS = 60;
+  const PRIZE_TIERS = ["sad", "happy", "trophy"];
 
   const DEFAULT_OPTIONS_CONFIG = [
-    { text: "Not a winner" },
+    { text: "Not a winner", prizeTier: "sad" },
     { text: "Spin again" },
     { text: "ST Store Discount" },
-    { text: "Hat", grandPrize: true },
+    { text: "Hat", prizeTier: "trophy" },
     { text: "Bag" },
     { text: "Scarf" },
     { text: "Sticker" },
-    { text: "Plushie", grandPrize: true },
+    { text: "Plushie", prizeTier: "trophy" },
     { text: "Toy Train" }
   ];
 
@@ -1073,11 +1001,13 @@
     }[c]));
   }
 
-  // Options are { id, text, grandPrize, color }. The id gives each option a
-  // stable identity across edits/reorders so "grand prize" marking and any
-  // manually-picked color survive text changes and reordering. color is
-  // either a PALETTE hex string (manually picked) or null (auto-cycled by
-  // the option's position, same as the wheel slice coloring).
+  // Options are { id, text, prizeTier, color }. The id gives each option a
+  // stable identity across edits/reorders so its prize tier and any
+  // manually-picked color survive text changes and reordering. prizeTier is
+  // "sad" (no prize, "womp womp"), "happy" (normal win, no effect), or
+  // "trophy" (grand prize, confetti) — "happy" is the default/neutral tier.
+  // color is either a PALETTE hex string (manually picked) or null
+  // (auto-cycled by the option's position, same as the wheel slice coloring).
   function makeId() {
     return window.crypto && crypto.randomUUID
       ? crypto.randomUUID()
@@ -1085,28 +1015,32 @@
   }
 
   function buildDefaultOptions() {
-    return DEFAULT_OPTIONS_CONFIG.map(o => ({ id: makeId(), text: o.text, grandPrize: !!o.grandPrize, color: null }));
+    return DEFAULT_OPTIONS_CONFIG.map(o => ({ id: makeId(), text: o.text, prizeTier: o.prizeTier || "happy", color: null }));
   }
 
-  // Accepts either a legacy plain string (pre-grand-prize storage format) or
-  // an already-shaped option object, and normalizes to the current shape.
+  // Accepts a legacy plain string, a legacy { grandPrize: boolean } shaped
+  // object, or the current { prizeTier } shape, and normalizes to the
+  // current shape.
   function normalizeOption(o) {
     if (typeof o === "string") {
-      return { id: makeId(), text: o, grandPrize: false, color: null };
+      return { id: makeId(), text: o, prizeTier: "happy", color: null };
     }
+    let prizeTier = (o && typeof o.prizeTier === "string" && PRIZE_TIERS.includes(o.prizeTier))
+      ? o.prizeTier
+      : (o && o.grandPrize ? "trophy" : "happy");
     let color = (o && typeof o.color === "string") ? o.color.toUpperCase() : null;
     if (color && LEGACY_COLOR_REMAP[color]) color = LEGACY_COLOR_REMAP[color];
     if (!color || !PALETTE.includes(color)) color = null;
     return {
       id: (o && typeof o.id === "string") ? o.id : makeId(),
       text: (o && typeof o.text === "string") ? o.text : "",
-      grandPrize: !!(o && o.grandPrize),
+      prizeTier,
       color
     };
   }
 
   let options = loadOptions();          // live options driving the wheel
-  let editingOptions = [];              // working copy used inside the modal
+  let editingOptions = [];              // working copy used inside Settings' Wheel tab
   let stats = loadStats();              // { [optionId]: { text, count } }, persisted win history
   let currentRotation = 0;              // radians, current wheel rotation
   let isSpinning = false;
@@ -1115,19 +1049,19 @@
   let statsResetPending = false;        // true while the stats "are you sure" confirm is showing
 
   // Event/kiosk mode state: guests gated behind an email while Event mode is
-  // on; staff tools (options, stats, winner log) live behind a PIN that's
-  // created the first time Event mode is turned on and persists on this
-  // device from then on. Unlocking is a one-time-per-session convenience —
-  // the PIN itself persists, but re-authentication isn't required on every
-  // single staff action within the same working session.
-  let entries = loadEntries();               // [{ id, email, prize, submittedAt, wonAt }]
-  let currentGuestEntryId = null;            // the active guest's entry, or null while the gate is showing
+  // on; staff tools (Wheel/Logs/Stats) live behind a PIN that's created the
+  // first time Event mode is turned on and persists on this device from
+  // then on. Unlocking is a one-time-per-session convenience — the PIN
+  // itself persists, but re-authentication isn't required on every single
+  // staff action within the same working session.
+  let entries = loadEntries();               // [{ id, email, prize, spinAt }], one row per spin
+  let pendingGuestEmail = null;               // email captured at the gate for the NEXT spin's log row, or null
   let staffPin = loadPin();                  // persisted on this device once set; null until first created
   let eventModeOn = loadEventMode();         // persisted; whether the guest-facing gate is active
   let resultDisplaySeconds = loadResetSeconds(); // persisted; how long a result shows before auto-reset
   let staffUnlocked = false;                 // session-only convenience; resets if the browser restarts
   let pendingUnlockAction = null;            // staff action to run immediately once the PIN succeeds
-  let entriesResetPending = false;           // true while the entries "are you sure" confirm is showing
+  let entriesResetPending = false;           // true while the logs "are you sure" confirm is showing
   let gateResetTimer = null;                 // pending auto-return-to-gate timeout
   let awaitingGateReset = false;             // true while gateResetTimer is armed (survives visibility changes)
 
@@ -1180,14 +1114,15 @@
     saveStats();
   }
 
-  // Guest entries: one row per email submitted at the gate, updated in place
-  // with the prize once that guest spins. Fully local — never sent anywhere.
+  // Spin log: one row per spin, always recorded regardless of Event mode.
+  // Email is attached only when the guest went through the Event gate for
+  // that spin. Fully local — never sent anywhere.
   function loadEntries() {
     try {
       const raw = localStorage.getItem(ENTRIES_KEY);
       if (!raw) return [];
       const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed.filter(e => e && typeof e.email === "string") : [];
+      return Array.isArray(parsed) ? parsed.filter(e => e && typeof e.prize === "string") : [];
     } catch (e) {
       return [];
     }
@@ -1271,8 +1206,8 @@
     return lines;
   }
 
-  // `now` drives the idle glow pulse; defaults to "this instant" for one-off
-  // redraws (resize, save) that don't pass a timestamp of their own.
+  // `now` drives the idle shimmer sweep; defaults to "this instant" for
+  // one-off redraws (resize, save) that don't pass a timestamp of their own.
   function drawWheel(rotation, now) {
     if (now === undefined) now = performance.now();
     const n = options.length;
@@ -1318,10 +1253,10 @@
     }
 
     // Pass 2: a soft light band sweeps outward across each grand-prize
-    // slice's face (clipped to its wedge), repeating while idle.
+    // (trophy tier) slice's face (clipped to its wedge), repeating while idle.
     if (shimmerActive) {
       for (let i = 0; i < n; i++) {
-        if (!options[i].grandPrize) continue;
+        if (options[i].prizeTier !== "trophy") continue;
         const [startAngle, endAngle] = sliceAngles(i);
         const midAngle = startAngle + sliceAngle / 2;
 
@@ -1358,7 +1293,7 @@
       const [startAngle, endAngle] = sliceAngles(i);
       const opt = options[i];
       const color = opt.color || PALETTE[i % PALETTE.length];
-      const isGrand = !!opt.grandPrize;
+      const isTrophy = opt.prizeTier === "trophy";
 
       ctx.fillStyle = isLightColor(color) ? "#2B376E" : "#FFFFFF";
 
@@ -1374,16 +1309,16 @@
       ctx.textAlign = "right";
       ctx.textBaseline = "middle";
 
-      // Grand-prize labels start a bit further inward, reserving a clear band
-      // near the rim for the trophy icon instead of crowding the same line.
-      const textRadius = RADIUS - 24 - (isGrand ? 12 : 0);
+      // Trophy-tier labels start a bit further inward, reserving a clear
+      // band near the rim for the trophy icon instead of crowding the same line.
+      const textRadius = RADIUS - 24 - (isTrophy ? 12 : 0);
       const lineHeight = fontSize * 1.15;
       const startY = -((lines.length - 1) * lineHeight) / 2;
       lines.forEach((line, idx) => {
         ctx.fillText(line, textRadius, startY + idx * lineHeight);
       });
 
-      if (isGrand) {
+      if (isTrophy) {
         ctx.font = Math.max(12, fontSize - 2) + "px sans-serif";
         ctx.textAlign = "right";
         ctx.textBaseline = "middle";
@@ -1395,7 +1330,7 @@
   }
 
   /* ============================================================
-     Confetti celebration (grand prize wins)
+     Confetti celebration (trophy-tier wins)
      ============================================================ */
   const confettiCanvas = document.getElementById("confettiCanvas");
   const confettiCtx = confettiCanvas.getContext("2d");
@@ -1542,11 +1477,15 @@
     return 1 - Math.pow(1 - t, 3);
   }
 
+  function clearResultTierClasses() {
+    resultPanel.classList.remove("grand-prize", "sad-outcome");
+  }
+
   function spin() {
     if (isSpinning) return;
-    if (eventModeOn && !currentGuestEntryId) return; // gate should be showing; no active guest to spin for
+    if (eventModeOn && pendingGuestEmail === null) return; // gate should be showing; no active guest to spin for
     if (options.length < 2) {
-      showResult(null, "Add at least 2 options to spin (use Edit).");
+      showResult(null, "Add at least 2 options to spin (use the gear icon).");
       return;
     }
 
@@ -1556,7 +1495,7 @@
 
     isSpinning = true;
     spinBtn.disabled = true;
-    resultPanel.classList.remove("grand-prize");
+    clearResultTierClasses();
     resultPanel.classList.add("empty");
     winnerText.textContent = "Spinning…";
 
@@ -1609,29 +1548,41 @@
     // Cross-check against geometry to guarantee consistency, then report.
     const actualIndex = getWinningIndex(currentRotation);
     const winner = options[actualIndex] !== undefined ? options[actualIndex] : options[expectedIndex];
-    const isGrandPrize = !!winner.grandPrize;
     recordWin(winner);
 
-    if (currentGuestEntryId) {
-      const guestEntry = entries.find(e => e.id === currentGuestEntryId);
-      if (guestEntry) {
-        guestEntry.prize = winner.text;
-        guestEntry.wonAt = new Date().toISOString();
-        saveEntries(entries);
-      }
+    // Always log the spin — email is attached only if this spin came through
+    // the Event gate.
+    entries.push({
+      id: makeId(),
+      email: pendingGuestEmail,
+      prize: winner.text,
+      spinAt: new Date().toISOString()
+    });
+    saveEntries(entries);
+
+    const tier = winner.prizeTier || "happy";
+    clearResultTierClasses();
+    if (tier === "trophy") {
+      resultPanel.classList.add("grand-prize");
+      showResult("\u{1F3C6} " + winner.text, null);
+      triggerConfetti();
+    } else if (tier === "sad") {
+      resultPanel.classList.add("sad-outcome");
+      showResult("\u{1F61E} " + winner.text, null);
+    } else {
+      showResult(winner.text, null);
     }
 
-    resultPanel.classList.toggle("grand-prize", isGrandPrize);
-    showResult((isGrandPrize ? "\u{1F3C6} " : "") + winner.text, null);
-    if (isGrandPrize) triggerConfetti();
-
-    if (eventModeOn) scheduleGateReset();
+    if (eventModeOn) {
+      pendingGuestEmail = null;
+      scheduleGateReset();
+    }
   }
 
   function showResult(winnerLabel, message) {
     if (message) {
       resultPanel.classList.add("empty");
-      resultPanel.classList.remove("grand-prize");
+      clearResultTierClasses();
       winnerText.textContent = message;
       return;
     }
@@ -1646,7 +1597,7 @@
     currentRotation = 0;
     drawWheel(currentRotation);
     clearConfetti();
-    resultPanel.classList.remove("grand-prize");
+    clearResultTierClasses();
     resultPanel.classList.add("empty");
     winnerText.textContent = "Spin the wheel to see your result!";
   }
@@ -1661,9 +1612,7 @@
   const eventToggleInput = document.getElementById("eventToggleInput");
   const settingsOpenBtn = document.getElementById("settingsOpenBtn");
 
-  const editorOverlay = document.getElementById("editorOverlay");
   const optionsListEl = document.getElementById("optionsList");
-  const grandPrizeListEl = document.getElementById("grandPrizeList");
   const newOptionInput = document.getElementById("newOptionInput");
   const addOptionBtn = document.getElementById("addOptionBtn");
   const saveBtn = document.getElementById("saveBtn");
@@ -1690,9 +1639,8 @@
   // guest can't contest what they won — it's right there on screen for the
   // next person (and staff) to see.
   function updateGateLastPrize() {
-    const won = entries.filter(e => e.prize && e.wonAt);
-    won.sort((a, b) => new Date(b.wonAt) - new Date(a.wonAt));
-    const last = won[0];
+    const sorted = entries.slice().sort((a, b) => new Date(b.spinAt) - new Date(a.spinAt));
+    const last = sorted[0];
     if (last) {
       gateLastPrizeEl.innerHTML = "Last prize won: <strong>" + escapeHtml(last.prize) + "</strong>";
       gateLastPrizeEl.hidden = false;
@@ -1722,12 +1670,7 @@
       return;
     }
     gateError.textContent = "";
-    // Log immediately, before the guest spins, so an entry is captured even
-    // if they walk away without playing.
-    const entry = { id: makeId(), email, prize: null, submittedAt: new Date().toISOString(), wonAt: null };
-    entries.push(entry);
-    saveEntries(entries);
-    currentGuestEntryId = entry.id;
+    pendingGuestEmail = email;
     hideGate();
     spin();
   });
@@ -1747,14 +1690,16 @@
       gateResetTimer = null;
     }
     awaitingGateReset = false;
-    currentGuestEntryId = null;
+    pendingGuestEmail = null;
     resetWheelDisplay();
     showGate();
   }
 
-  // Turning Event mode on requires staff PIN auth (see guardStaffAction);
-  // turning it off doesn't, since that's the "safe" direction — it just
-  // deactivates the guest-facing gate without touching any saved data.
+  // Turning Event mode on requires staff PIN auth (see guardStaffAction) and
+  // only activates the gate + auto-reset timer — nothing else changes.
+  // Turning it off doesn't need the PIN, since that's always the safe
+  // direction: it just deactivates the guest-facing gate without touching
+  // any saved data.
   function activateEventMode() {
     eventModeOn = true;
     saveEventMode(true);
@@ -1766,7 +1711,7 @@
     eventModeOn = false;
     saveEventMode(false);
     eventToggleInput.checked = false;
-    currentGuestEntryId = null;
+    pendingGuestEmail = null;
     if (gateResetTimer) {
       clearTimeout(gateResetTimer);
       gateResetTimer = null;
@@ -1789,28 +1734,6 @@
       returnToGate();
     }
   });
-
-  // Both lists are persistent drop targets for dropping on empty space
-  // (below/between rows); dropping directly on a row is handled per-row
-  // in createOptionRow below, which stops the event before it reaches here.
-  function wireContainerDropZone(listEl, group) {
-    listEl.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = "move";
-      listEl.classList.add("drag-over");
-    });
-    listEl.addEventListener("dragleave", (e) => {
-      if (e.target === listEl) listEl.classList.remove("drag-over");
-    });
-    listEl.addEventListener("drop", (e) => {
-      e.preventDefault();
-      listEl.classList.remove("drag-over");
-      if (!dragSrcId) return;
-      moveItemToPosition(dragSrcId, null, group);
-    });
-  }
-  wireContainerDropZone(optionsListEl, "regular");
-  wireContainerDropZone(grandPrizeListEl, "grand");
 
   /* ============================================================
      Staff PIN gate — protects the Event toggle and Settings. This is a
@@ -1942,118 +1865,62 @@
   });
 
   /* ============================================================
-     Editor modal: open/close
-     ============================================================ */
-  let lastFocusedElement = null;
-
-  function openEditor() {
-    editingOptions = options.slice(); // work on a copy so Cancel is truly non-destructive
-    formError.textContent = "";
-    newOptionInput.value = "";
-    renderEditorList();
-    editorOverlay.classList.add("open");
-    lastFocusedElement = document.activeElement;
-    newOptionInput.focus();
-    document.addEventListener("keydown", onModalKeydown);
-  }
-
-  function closeEditor() {
-    editorOverlay.classList.remove("open");
-    document.removeEventListener("keydown", onModalKeydown);
-    if (lastFocusedElement) lastFocusedElement.focus();
-  }
-
-  function closeAllColorPickers() {
-    document.querySelectorAll(".color-picker").forEach(p => { p.hidden = true; });
-    document.querySelectorAll('.swatch[aria-expanded="true"]').forEach(s => s.setAttribute("aria-expanded", "false"));
-  }
-
-  // Clicking anywhere outside an open color picker closes it.
-  document.addEventListener("click", closeAllColorPickers);
-
-  function onModalKeydown(e) {
-    if (e.key === "Escape") {
-      const openPicker = document.querySelector(".color-picker:not([hidden])");
-      if (openPicker) {
-        closeAllColorPickers();
-        return;
-      }
-      closeEditor();
-    }
-  }
-
-  cancelBtn.addEventListener("click", closeEditor);
-  editorOverlay.addEventListener("click", (e) => {
-    if (e.target === editorOverlay) closeEditor();
-  });
-
-  /* ============================================================
-     Editor list rendering (CRUD)
+     Wheel tab: options list rendering (CRUD)
      ============================================================ */
   function focusHandleById(id) {
-    const handle = optionsListEl.querySelector('[data-id="' + id + '"] .drag-handle')
-      || grandPrizeListEl.querySelector('[data-id="' + id + '"] .drag-handle');
+    const handle = optionsListEl.querySelector('[data-id="' + id + '"] .drag-handle');
     if (handle) handle.focus();
   }
 
-  // Swap an option with its neighbor within its own group (Options or
-  // Grand Prize), preserving the other group's relative order untouched.
-  function moveWithinGroup(id, direction) {
-    const item = editingOptions.find(o => o.id === id);
-    if (!item) return;
-    const groupIds = editingOptions.filter(o => o.grandPrize === item.grandPrize).map(o => o.id);
-    const pos = groupIds.indexOf(id);
-    const swapPos = pos + direction;
-    if (swapPos < 0 || swapPos >= groupIds.length) return;
-    const otherId = groupIds[swapPos];
+  function moveOption(id, direction) {
     const i = editingOptions.findIndex(o => o.id === id);
-    const j = editingOptions.findIndex(o => o.id === otherId);
+    if (i === -1) return;
+    const j = i + direction;
+    if (j < 0 || j >= editingOptions.length) return;
     [editingOptions[i], editingOptions[j]] = [editingOptions[j], editingOptions[i]];
     renderEditorList();
     focusHandleById(id);
   }
 
-  // Keyboard equivalent of dragging an option across to the other list.
-  // Toggling Grand Prize membership just flips the flag — it deliberately
-  // leaves the option's wheel position untouched, so quickly marking two
-  // different options doesn't cluster them next to each other on the wheel.
-  function moveToOtherGroup(id) {
-    const item = editingOptions.find(o => o.id === id);
-    if (!item) return;
-    item.grandPrize = !item.grandPrize;
-    renderEditorList();
-    focusHandleById(id);
-  }
-
-  // Drag-and-drop: dropping on a specific row is an explicit, intentional
-  // reorder, so relocate dragId next to targetId. Dropping on empty list
-  // space (targetId null) is just "add to this list" — flip the flag in
-  // place without moving it, for the same reason as moveToOtherGroup above.
-  function moveItemToPosition(dragId, targetId, targetGroup) {
+  // Drag-and-drop reorder within the single options list. Dropping on a
+  // specific row inserts next to it; dropping on empty list space appends.
+  function moveItemToPosition(dragId, targetId) {
     const item = editingOptions.find(o => o.id === dragId);
     if (!item) return;
-    if (targetId) {
-      const fromIdx = editingOptions.indexOf(item);
-      editingOptions.splice(fromIdx, 1);
-      item.grandPrize = (targetGroup === "grand");
-      let toIdx = editingOptions.findIndex(o => o.id === targetId);
-      if (toIdx === -1) toIdx = editingOptions.length;
-      editingOptions.splice(toIdx, 0, item);
-    } else {
-      item.grandPrize = (targetGroup === "grand");
-    }
+    const fromIdx = editingOptions.indexOf(item);
+    editingOptions.splice(fromIdx, 1);
+    let toIdx = targetId ? editingOptions.findIndex(o => o.id === targetId) : -1;
+    if (toIdx === -1) toIdx = editingOptions.length;
+    editingOptions.splice(toIdx, 0, item);
     renderEditorList();
   }
 
-  function ariaLabelForHandle(opt) {
-    const groupName = opt.grandPrize ? "Grand Prize" : "Options";
-    const otherGroupName = opt.grandPrize ? "Options" : "Grand Prize";
-    return "Reorder " + opt.text + " (in " + groupName + "). Drag to move between lists, use arrow keys to reorder, or press Enter to move it to " + otherGroupName + ".";
+  function wireContainerDropZone(listEl) {
+    listEl.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      listEl.classList.add("drag-over");
+    });
+    listEl.addEventListener("dragleave", (e) => {
+      if (e.target === listEl) listEl.classList.remove("drag-over");
+    });
+    listEl.addEventListener("drop", (e) => {
+      e.preventDefault();
+      listEl.classList.remove("drag-over");
+      if (!dragSrcId) return;
+      moveItemToPosition(dragSrcId, null);
+    });
   }
+  wireContainerDropZone(optionsListEl);
 
-  // Builds one full row (drag handle, color swatch, editable text, delete)
-  // shared by both the Options list and the Grand Prize list — dragging a
-  // row between the two lists is what marks/unmarks it as a grand prize.
+  const TIER_INFO = [
+    { key: "sad", icon: "\u{1F61E}", label: "Sad — no prize, plays a “womp womp” letdown" },
+    { key: "happy", icon: "\u{1F642}", label: "Happy — normal win, no celebration" },
+    { key: "trophy", icon: "\u{1F3C6}", label: "Grand Prize — confetti celebration" }
+  ];
+
+  // Builds one full row (drag handle, color swatch, editable text, prize
+  // tier control, delete) for the single options list.
   function createOptionRow(opt) {
     const li = document.createElement("li");
     li.className = "option-row";
@@ -2064,7 +1931,7 @@
     handle.className = "drag-handle";
     handle.draggable = true;
     handle.innerHTML = "&#9776;";
-    handle.setAttribute("aria-label", ariaLabelForHandle(opt));
+    handle.setAttribute("aria-label", "Reorder " + opt.text + ". Drag to move, or use arrow keys while focused.");
 
     handle.addEventListener("dragstart", (e) => {
       dragSrcId = opt.id;
@@ -2078,18 +1945,14 @@
         el.classList.remove("dragging", "drag-over");
       });
       optionsListEl.classList.remove("drag-over");
-      grandPrizeListEl.classList.remove("drag-over");
     });
     handle.addEventListener("keydown", (e) => {
       if (e.key === "ArrowUp") {
         e.preventDefault();
-        moveWithinGroup(opt.id, -1);
+        moveOption(opt.id, -1);
       } else if (e.key === "ArrowDown") {
         e.preventDefault();
-        moveWithinGroup(opt.id, 1);
-      } else if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        moveToOtherGroup(opt.id);
+        moveOption(opt.id, 1);
       }
     });
 
@@ -2106,7 +1969,7 @@
       e.stopPropagation();
       li.classList.remove("drag-over");
       if (!dragSrcId || dragSrcId === opt.id) return;
-      moveItemToPosition(dragSrcId, opt.id, opt.grandPrize ? "grand" : "regular");
+      moveItemToPosition(dragSrcId, opt.id);
     });
 
     const swatchWrap = document.createElement("div");
@@ -2180,6 +2043,27 @@
       opt.text = input.value;
     });
 
+    const tierControl = document.createElement("div");
+    tierControl.className = "prize-tier-control";
+    tierControl.setAttribute("role", "group");
+    tierControl.setAttribute("aria-label", "Prize tier for " + opt.text);
+
+    TIER_INFO.forEach(t => {
+      const tierBtn = document.createElement("button");
+      tierBtn.type = "button";
+      tierBtn.className = "tier-btn tier-" + t.key;
+      tierBtn.textContent = t.icon;
+      const isActive = (opt.prizeTier || "happy") === t.key;
+      tierBtn.setAttribute("aria-pressed", isActive ? "true" : "false");
+      tierBtn.title = t.label;
+      tierBtn.setAttribute("aria-label", t.label);
+      tierBtn.addEventListener("click", () => {
+        opt.prizeTier = t.key;
+        renderEditorList();
+      });
+      tierControl.appendChild(tierBtn);
+    });
+
     const delBtn = document.createElement("button");
     delBtn.type = "button";
     delBtn.className = "icon-btn delete";
@@ -2194,6 +2078,7 @@
     li.appendChild(handle);
     li.appendChild(swatchWrap);
     li.appendChild(input);
+    li.appendChild(tierControl);
     li.appendChild(delBtn);
     return li;
   }
@@ -2207,25 +2092,19 @@
 
   function renderEditorList() {
     optionsListEl.innerHTML = "";
-    grandPrizeListEl.innerHTML = "";
-
-    const regularItems = editingOptions.filter(o => !o.grandPrize);
-    const grandItems = editingOptions.filter(o => o.grandPrize);
-
-    regularItems.forEach(opt => optionsListEl.appendChild(createOptionRow(opt)));
-    grandItems.forEach(opt => grandPrizeListEl.appendChild(createOptionRow(opt)));
-
-    if (regularItems.length === 0) {
-      optionsListEl.appendChild(createEmptyRow(
-        editingOptions.length === 0
-          ? "No options yet — add one below."
-          : "All options are marked Grand Prize — drag one back here to make it a regular option."
-      ));
-    }
-    if (grandItems.length === 0) {
-      grandPrizeListEl.appendChild(createEmptyRow("Drag an option here (via its ☰ handle) to mark it as a Grand Prize."));
+    editingOptions.forEach(opt => optionsListEl.appendChild(createOptionRow(opt)));
+    if (editingOptions.length === 0) {
+      optionsListEl.appendChild(createEmptyRow("No options yet — add one below."));
     }
   }
+
+  function closeAllColorPickers() {
+    document.querySelectorAll(".color-picker").forEach(p => { p.hidden = true; });
+    document.querySelectorAll('.swatch[aria-expanded="true"]').forEach(s => s.setAttribute("aria-expanded", "false"));
+  }
+
+  // Clicking anywhere outside an open color picker closes it.
+  document.addEventListener("click", closeAllColorPickers);
 
   function addOption() {
     const value = newOptionInput.value.trim();
@@ -2235,7 +2114,7 @@
       return;
     }
     formError.textContent = "";
-    editingOptions.push({ id: makeId(), text: value, grandPrize: false, color: null });
+    editingOptions.push({ id: makeId(), text: value, prizeTier: "happy", color: null });
     newOptionInput.value = "";
     renderEditorList();
     newOptionInput.focus();
@@ -2252,7 +2131,7 @@
   function saveEditor() {
     // Validation: no blanks, at least 2 options.
     const cleaned = editingOptions
-      .map(o => ({ id: o.id, text: o.text.trim(), grandPrize: o.grandPrize, color: o.color }))
+      .map(o => ({ id: o.id, text: o.text.trim(), prizeTier: o.prizeTier || "happy", color: o.color }))
       .filter(o => o.text.length > 0);
 
     if (cleaned.length !== editingOptions.length) {
@@ -2268,10 +2147,19 @@
     options = cleaned;
     saveOptions(options);
     resetWheelDisplay();
-    closeEditor();
+    editingOptions = options.slice(); // keep the tab's working copy in sync post-save
+    renderEditorList();
   }
 
   saveBtn.addEventListener("click", saveEditor);
+
+  function cancelEditing() {
+    editingOptions = options.slice();
+    formError.textContent = "";
+    renderEditorList();
+  }
+
+  cancelBtn.addEventListener("click", cancelEditing);
 
   function resetToDefaults() {
     editingOptions = buildDefaultOptions();
@@ -2282,37 +2170,30 @@
   resetBtn.addEventListener("click", resetToDefaults);
 
   /* ============================================================
-     Stats modal: win frequency per option, saved on this device
+     Stats tab: win frequency per option, saved on this device
      ============================================================ */
-  const statsOverlay = document.getElementById("statsOverlay");
   const statsListEl = document.getElementById("statsList");
   const statsTotalEl = document.getElementById("statsTotal");
   const statsConfirmText = document.getElementById("statsConfirmText");
   const resetStatsBtn = document.getElementById("resetStatsBtn");
   const cancelResetStatsBtn = document.getElementById("cancelResetStatsBtn");
-  const closeStatsBtn = document.getElementById("closeStatsBtn");
-
-  let lastFocusedElementStats = null;
 
   function renderStatsList() {
     statsListEl.innerHTML = "";
 
-    const entries = Object.keys(stats).map(id => ({ id, text: stats[id].text, count: stats[id].count }));
-    entries.sort((a, b) => b.count - a.count);
-    const totalSpins = entries.reduce((sum, e) => sum + e.count, 0);
+    const rows = Object.keys(stats).map(id => ({ id, text: stats[id].text, count: stats[id].count }));
+    rows.sort((a, b) => b.count - a.count);
+    const totalSpins = rows.reduce((sum, r) => sum + r.count, 0);
     statsTotalEl.textContent = "Total spins recorded: " + totalSpins;
 
-    if (entries.length === 0) {
-      const empty = document.createElement("li");
-      empty.className = "option-row-empty";
-      empty.textContent = "No spins recorded yet.";
-      statsListEl.appendChild(empty);
+    if (rows.length === 0) {
+      statsListEl.appendChild(createEmptyRow("No spins recorded yet."));
       return;
     }
 
-    entries.forEach(e => {
+    rows.forEach(r => {
       const li = document.createElement("li");
-      const liveOption = options.find(o => o.id === e.id);
+      const liveOption = options.find(o => o.id === r.id);
       li.className = "stats-row" + (liveOption ? "" : " removed");
 
       const swatch = document.createElement("span");
@@ -2324,12 +2205,12 @@
 
       const label = document.createElement("span");
       label.className = "stats-label";
-      label.textContent = e.text + (liveOption ? "" : " (removed)");
+      label.textContent = r.text + (liveOption ? "" : " (removed)");
 
       const count = document.createElement("span");
       count.className = "stats-count";
-      const pct = totalSpins > 0 ? Math.round((e.count / totalSpins) * 100) : 0;
-      count.textContent = e.count + " win" + (e.count === 1 ? "" : "s") + " (" + pct + "%)";
+      const pct = totalSpins > 0 ? Math.round((r.count / totalSpins) * 100) : 0;
+      count.textContent = r.count + " win" + (r.count === 1 ? "" : "s") + " (" + pct + "%)";
 
       li.appendChild(swatch);
       li.appendChild(label);
@@ -2342,41 +2223,10 @@
     statsResetPending = pending;
     statsConfirmText.hidden = !pending;
     cancelResetStatsBtn.hidden = !pending;
-    closeStatsBtn.hidden = pending;
     resetStatsBtn.textContent = pending ? "Yes, reset stats" : "Reset Stats";
   }
 
-  function openStats() {
-    setStatsResetPending(false);
-    renderStatsList();
-    statsOverlay.classList.add("open");
-    lastFocusedElementStats = document.activeElement;
-    resetStatsBtn.focus();
-    document.addEventListener("keydown", onStatsModalKeydown);
-  }
-
-  function closeStats() {
-    statsOverlay.classList.remove("open");
-    setStatsResetPending(false);
-    document.removeEventListener("keydown", onStatsModalKeydown);
-    if (lastFocusedElementStats) lastFocusedElementStats.focus();
-  }
-
-  function onStatsModalKeydown(e) {
-    if (e.key === "Escape") {
-      if (statsResetPending) {
-        setStatsResetPending(false);
-        return;
-      }
-      closeStats();
-    }
-  }
-
-  closeStatsBtn.addEventListener("click", closeStats);
   cancelResetStatsBtn.addEventListener("click", () => setStatsResetPending(false));
-  statsOverlay.addEventListener("click", (e) => {
-    if (e.target === statsOverlay) closeStats();
-  });
 
   resetStatsBtn.addEventListener("click", () => {
     if (!statsResetPending) {
@@ -2390,22 +2240,17 @@
   });
 
   /* ============================================================
-     Winner log modal: guest email + prize log (kiosk mode)
+     Logs tab: every spin (email attached only when Event mode was on)
      ============================================================ */
-  const entriesOverlay = document.getElementById("entriesOverlay");
   const entriesTotalEl = document.getElementById("entriesTotal");
   const entriesListEl = document.getElementById("entriesList");
   const entriesConfirmText = document.getElementById("entriesConfirmText");
   const downloadEntriesBtn = document.getElementById("downloadEntriesBtn");
   const clearEntriesBtn = document.getElementById("clearEntriesBtn");
   const cancelClearEntriesBtn = document.getElementById("cancelClearEntriesBtn");
-  const closeEntriesBtn = document.getElementById("closeEntriesBtn");
-
-  let lastFocusedElementEntries = null;
 
   function renderEntriesTotal() {
-    const completed = entries.filter(e => e.prize).length;
-    entriesTotalEl.textContent = "Total entries: " + entries.length + " (" + completed + " completed spins)";
+    entriesTotalEl.textContent = "Total spins recorded: " + entries.length;
   }
 
   function formatEntryTime(iso) {
@@ -2417,13 +2262,10 @@
   // "who won what" dispute on the spot without downloading anything.
   function renderEntriesList() {
     entriesListEl.innerHTML = "";
-    const sorted = entries.slice().sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+    const sorted = entries.slice().sort((a, b) => new Date(b.spinAt) - new Date(a.spinAt));
 
     if (sorted.length === 0) {
-      const empty = document.createElement("li");
-      empty.className = "option-row-empty";
-      empty.textContent = "No entries yet.";
-      entriesListEl.appendChild(empty);
+      entriesListEl.appendChild(createEmptyRow("No spins recorded yet."));
       return;
     }
 
@@ -2433,11 +2275,11 @@
 
       const label = document.createElement("span");
       label.className = "stats-label";
-      label.textContent = e.email + " — " + (e.prize || "(no spin yet)");
+      label.textContent = (e.email ? e.email + " — " : "") + e.prize;
 
       const time = document.createElement("span");
       time.className = "stats-count";
-      time.textContent = formatEntryTime(e.wonAt || e.submittedAt);
+      time.textContent = formatEntryTime(e.spinAt);
 
       li.appendChild(label);
       li.appendChild(time);
@@ -2449,35 +2291,7 @@
     entriesResetPending = pending;
     entriesConfirmText.hidden = !pending;
     cancelClearEntriesBtn.hidden = !pending;
-    closeEntriesBtn.hidden = pending;
-    clearEntriesBtn.textContent = pending ? "Yes, clear entries" : "Clear Entries";
-  }
-
-  function openEntries() {
-    setEntriesResetPending(false);
-    renderEntriesTotal();
-    renderEntriesList();
-    entriesOverlay.classList.add("open");
-    lastFocusedElementEntries = document.activeElement;
-    downloadEntriesBtn.focus();
-    document.addEventListener("keydown", onEntriesModalKeydown);
-  }
-
-  function closeEntries() {
-    entriesOverlay.classList.remove("open");
-    setEntriesResetPending(false);
-    document.removeEventListener("keydown", onEntriesModalKeydown);
-    if (lastFocusedElementEntries) lastFocusedElementEntries.focus();
-  }
-
-  function onEntriesModalKeydown(e) {
-    if (e.key === "Escape") {
-      if (entriesResetPending) {
-        setEntriesResetPending(false);
-        return;
-      }
-      closeEntries();
-    }
+    clearEntriesBtn.textContent = pending ? "Yes, clear records" : "Clear Records";
   }
 
   function csvEscape(value) {
@@ -2490,17 +2304,17 @@
   // hunt for a silently-downloaded file. Falls back to a direct download
   // link on browsers/contexts without file sharing support (e.g. file://).
   async function downloadEntriesCsv() {
-    const header = ["Email", "Prize", "Submitted At", "Won At"];
-    const rows = entries.map(e => [e.email, e.prize || "", e.submittedAt || "", e.wonAt || ""]);
+    const header = ["Email", "Prize", "Date/Time"];
+    const rows = entries.map(e => [e.email || "", e.prize || "", e.spinAt || ""]);
     const csv = [header, ...rows].map(r => r.map(csvEscape).join(",")).join("\r\n");
-    const filename = "st-spin-wheel-entries-" + new Date().toISOString().slice(0, 10) + ".csv";
+    const filename = "st-spin-wheel-log-" + new Date().toISOString().slice(0, 10) + ".csv";
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
 
     if (navigator.canShare && navigator.share) {
       try {
         const file = new File([blob], filename, { type: "text/csv" });
         if (navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: "Guest Entries" });
+          await navigator.share({ files: [file], title: "Spin Log" });
           return;
         }
       } catch (err) {
@@ -2519,11 +2333,7 @@
     URL.revokeObjectURL(url);
   }
 
-  closeEntriesBtn.addEventListener("click", closeEntries);
   cancelClearEntriesBtn.addEventListener("click", () => setEntriesResetPending(false));
-  entriesOverlay.addEventListener("click", (e) => {
-    if (e.target === entriesOverlay) closeEntries();
-  });
   downloadEntriesBtn.addEventListener("click", downloadEntriesCsv);
 
   clearEntriesBtn.addEventListener("click", () => {
@@ -2539,22 +2349,54 @@
   });
 
   /* ============================================================
-     Event control (top-right toggle + gear) and the Settings hub
+     Event control (top-right toggle + gear) and the Settings modal
      ============================================================ */
   const settingsOverlay = document.getElementById("settingsOverlay");
   const resetSecondsInput = document.getElementById("resetSecondsInput");
-  const openEditorFromSettingsBtn = document.getElementById("openEditorFromSettingsBtn");
-  const openStatsFromSettingsBtn = document.getElementById("openStatsFromSettingsBtn");
-  const openEntriesFromSettingsBtn = document.getElementById("openEntriesFromSettingsBtn");
   const closeSettingsBtn = document.getElementById("closeSettingsBtn");
+  const tabButtons = document.querySelectorAll(".tab-btn");
+  const tabPanels = {
+    wheel: document.getElementById("tabPanelWheel"),
+    logs: document.getElementById("tabPanelLogs"),
+    stats: document.getElementById("tabPanelStats")
+  };
 
   let lastFocusedElementSettings = null;
 
+  function setActiveSettingsTab(tab) {
+    tabButtons.forEach(btn => {
+      const isActive = btn.dataset.tab === tab;
+      btn.classList.toggle("active", isActive);
+      btn.setAttribute("aria-selected", isActive ? "true" : "false");
+    });
+    Object.keys(tabPanels).forEach(key => {
+      tabPanels[key].hidden = (key !== tab);
+    });
+  }
+
+  tabButtons.forEach(btn => {
+    btn.addEventListener("click", () => setActiveSettingsTab(btn.dataset.tab));
+  });
+
   function openSettings() {
+    editingOptions = options.slice();
+    formError.textContent = "";
+    newOptionInput.value = "";
+    renderEditorList();
+
     resetSecondsInput.value = String(resultDisplaySeconds);
+
+    setStatsResetPending(false);
+    renderStatsList();
+
+    setEntriesResetPending(false);
+    renderEntriesTotal();
+    renderEntriesList();
+
+    setActiveSettingsTab("wheel");
     settingsOverlay.classList.add("open");
     lastFocusedElementSettings = document.activeElement;
-    resetSecondsInput.focus();
+    newOptionInput.focus();
     document.addEventListener("keydown", onSettingsModalKeydown);
   }
 
@@ -2565,7 +2407,21 @@
   }
 
   function onSettingsModalKeydown(e) {
-    if (e.key === "Escape") closeSettings();
+    if (e.key !== "Escape") return;
+    const openPicker = document.querySelector(".color-picker:not([hidden])");
+    if (openPicker) {
+      closeAllColorPickers();
+      return;
+    }
+    if (statsResetPending) {
+      setStatsResetPending(false);
+      return;
+    }
+    if (entriesResetPending) {
+      setEntriesResetPending(false);
+      return;
+    }
+    closeSettings();
   }
 
   resetSecondsInput.addEventListener("change", () => {
@@ -2583,31 +2439,15 @@
     if (e.target === settingsOverlay) closeSettings();
   });
 
-  // Each of these leaves Settings to open its own modal, rather than
-  // stacking modals on top of each other.
-  openEditorFromSettingsBtn.addEventListener("click", () => {
-    closeSettings();
-    openEditor();
-  });
-  openStatsFromSettingsBtn.addEventListener("click", () => {
-    closeSettings();
-    openStats();
-  });
-  openEntriesFromSettingsBtn.addEventListener("click", () => {
-    closeSettings();
-    openEntries();
-  });
-
-  // Turning Event mode on is staff-gated (PIN); turning it off isn't, since
-  // that's always the safe direction. The checkbox is reverted and only
-  // actually flips once guardStaffAction's action fires.
+  // Turning Event mode on is staff-gated (PIN, created the first time this
+  // happens on a device); turning it off isn't, since that's always the
+  // safe direction. The checkbox is reverted and only actually flips once
+  // guardStaffAction's action fires. Toggling on activates only the gate +
+  // auto-reset timer — it does not open Settings.
   eventToggleInput.addEventListener("change", () => {
     if (eventToggleInput.checked) {
       eventToggleInput.checked = false;
-      guardStaffAction(() => {
-        activateEventMode();
-        openSettings();
-      });
+      guardStaffAction(activateEventMode);
     } else {
       deactivateEventMode();
     }
@@ -2618,9 +2458,9 @@
   /* ============================================================
      Init
      ============================================================ */
-  // Keeps the grand-prize glow gently breathing while idle. Redraws are
-  // cheap for a wheel this size, and the loop itself just skips drawing
-  // while a spin's own animation frame loop is already driving drawWheel.
+  // Keeps the grand-prize (trophy tier) shimmer sweeping gently while idle.
+  // Redraws are cheap for a wheel this size, and the loop itself just skips
+  // drawing while a spin's own animation frame loop is already driving drawWheel.
   function idlePulseFrame(now) {
     if (!isSpinning) drawWheel(currentRotation, now);
     requestAnimationFrame(idlePulseFrame);
