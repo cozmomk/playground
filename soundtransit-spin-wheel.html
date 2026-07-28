@@ -16,6 +16,9 @@
     --railway-gray: #5A5A5A;
     --bg-light: #F4F6F8;
     --card-white: #FFFFFF;
+    /* Not an ST brand color — a universal "needs attention" red for the
+       undownloaded-logs notification dot, deliberately outside the palette. */
+    --alert-red: #E4002B;
     --focus-ring: var(--wave-teal);
   }
 
@@ -304,6 +307,21 @@
     outline: 3px solid var(--focus-ring);
     outline-offset: 2px;
   }
+
+  /* Undownloaded-logs indicator: only shown while there are spin records
+     with a guest email that haven't been included in a CSV download yet. */
+  .event-notify-dot {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--alert-red);
+    border: 2px solid var(--wave-blue);
+  }
+
+  .event-notify-dot[hidden] { display: none; }
 
   .event-settings-btn {
     background: none;
@@ -790,6 +808,19 @@
     <span>Event</span>
   </label>
   <button class="event-settings-btn" id="settingsOpenBtn" type="button" aria-label="Event settings" aria-haspopup="dialog" aria-controls="settingsModal" title="Event settings">&#9881;</button>
+  <span class="event-notify-dot" id="eventNotifyDot" hidden aria-hidden="true"></span>
+</div>
+
+<!-- ===== Warn before turning Event off if guest logs aren't downloaded yet ===== -->
+<div class="modal-overlay" id="eventOffWarnOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="eventOffWarnTitle" id="eventOffWarnModal">
+    <h2 id="eventOffWarnTitle">Download logs before turning Event off?</h2>
+    <p class="hint">This event has guest email logs that haven't been downloaded yet. Download them now, or continue to turn off email collection and let people spin freely.</p>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="eventOffGoToLogsBtn" type="button">Go to Logs</button>
+      <button class="btn btn-outline" id="eventOffContinueBtn" type="button">Continue Without Downloading</button>
+    </div>
+  </div>
 </div>
 
 <!-- ===== Staff PIN entry (subsequent unlocks, once a PIN exists) ===== -->
@@ -1122,7 +1153,9 @@
       const raw = localStorage.getItem(ENTRIES_KEY);
       if (!raw) return [];
       const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed.filter(e => e && typeof e.prize === "string") : [];
+      return Array.isArray(parsed)
+        ? parsed.filter(e => e && typeof e.prize === "string").map(e => ({ ...e, downloaded: !!e.downloaded }))
+        : [];
     } catch (e) {
       return [];
     }
@@ -1556,9 +1589,11 @@
       id: makeId(),
       email: pendingGuestEmail,
       prize: winner.text,
-      spinAt: new Date().toISOString()
+      spinAt: new Date().toISOString(),
+      downloaded: false
     });
     saveEntries(entries);
+    updateEventNotifyDot();
 
     const tier = winner.prizeTier || "happy";
     clearResultTierClasses();
@@ -2299,6 +2334,14 @@
     return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   }
 
+  // Marks every current entry as downloaded, clearing the notification dot.
+  // Called once a CSV export actually goes out (not on a cancelled share sheet).
+  function markEntriesDownloaded() {
+    entries.forEach(e => { e.downloaded = true; });
+    saveEntries(entries);
+    updateEventNotifyDot();
+  }
+
   // Prefers the Web Share API (native share sheet — AirDrop, Mail, Save to
   // Files, etc.) so non-technical staff on an iPad/Android don't have to
   // hunt for a silently-downloaded file. Falls back to a direct download
@@ -2315,6 +2358,7 @@
         const file = new File([blob], filename, { type: "text/csv" });
         if (navigator.canShare({ files: [file] })) {
           await navigator.share({ files: [file], title: "Spin Log" });
+          markEntriesDownloaded();
           return;
         }
       } catch (err) {
@@ -2331,6 +2375,7 @@
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    markEntriesDownloaded();
   }
 
   cancelClearEntriesBtn.addEventListener("click", () => setEntriesResetPending(false));
@@ -2346,6 +2391,7 @@
     setEntriesResetPending(false);
     renderEntriesTotal();
     renderEntriesList();
+    updateEventNotifyDot();
   });
 
   /* ============================================================
@@ -2439,15 +2485,74 @@
     if (e.target === settingsOverlay) closeSettings();
   });
 
+  /* ============================================================
+     Undownloaded-logs indicator + the "turn Event off" warning
+     ============================================================ */
+  const eventNotifyDot = document.getElementById("eventNotifyDot");
+  const eventOffWarnOverlay = document.getElementById("eventOffWarnOverlay");
+  const eventOffGoToLogsBtn = document.getElementById("eventOffGoToLogsBtn");
+  const eventOffContinueBtn = document.getElementById("eventOffContinueBtn");
+
+  let lastFocusedElementEventOffWarn = null;
+
+  function hasUndownloadedEmailEntries() {
+    return entries.some(e => e.email && !e.downloaded);
+  }
+
+  function updateEventNotifyDot() {
+    eventNotifyDot.hidden = !hasUndownloadedEmailEntries();
+  }
+
+  function openEventOffWarn() {
+    eventOffWarnOverlay.classList.add("open");
+    lastFocusedElementEventOffWarn = document.activeElement;
+    eventOffContinueBtn.focus();
+    document.addEventListener("keydown", onEventOffWarnKeydown);
+  }
+
+  // Closing without picking an option (Escape/backdrop) cancels the whole
+  // thing — Event mode stays on, exactly like tapping neither button.
+  function closeEventOffWarn() {
+    eventOffWarnOverlay.classList.remove("open");
+    document.removeEventListener("keydown", onEventOffWarnKeydown);
+    if (lastFocusedElementEventOffWarn) lastFocusedElementEventOffWarn.focus();
+  }
+
+  function onEventOffWarnKeydown(e) {
+    if (e.key === "Escape") closeEventOffWarn();
+  }
+
+  eventOffWarnOverlay.addEventListener("click", (e) => {
+    if (e.target === eventOffWarnOverlay) closeEventOffWarn();
+  });
+
+  eventOffContinueBtn.addEventListener("click", () => {
+    closeEventOffWarn();
+    deactivateEventMode();
+  });
+
+  eventOffGoToLogsBtn.addEventListener("click", () => {
+    closeEventOffWarn();
+    guardStaffAction(() => {
+      openSettings();
+      setActiveSettingsTab("logs");
+    });
+  });
+
   // Turning Event mode on is staff-gated (PIN, created the first time this
   // happens on a device); turning it off isn't, since that's always the
-  // safe direction. The checkbox is reverted and only actually flips once
-  // guardStaffAction's action fires. Toggling on activates only the gate +
-  // auto-reset timer — it does not open Settings.
+  // safe direction — unless there are guest email logs nobody's downloaded
+  // yet, in which case we ask first rather than let that data get forgotten.
+  // The checkbox is reverted and only actually flips once the chosen action
+  // fires. Toggling on activates only the gate + auto-reset timer — it does
+  // not open Settings.
   eventToggleInput.addEventListener("change", () => {
     if (eventToggleInput.checked) {
       eventToggleInput.checked = false;
       guardStaffAction(activateEventMode);
+    } else if (hasUndownloadedEmailEntries()) {
+      eventToggleInput.checked = true; // stay on until the staff member decides
+      openEventOffWarn();
     } else {
       deactivateEventMode();
     }
@@ -2476,6 +2581,7 @@
     // Resume whatever this device's Event mode state was left in.
     eventToggleInput.checked = eventModeOn;
     if (eventModeOn) showGate();
+    updateEventNotifyDot();
   }
 
   window.addEventListener("resize", () => drawWheel(currentRotation));
