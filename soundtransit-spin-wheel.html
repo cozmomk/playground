@@ -1291,14 +1291,24 @@
   const CENTER = CANVAS_SIZE / 2;
   const RADIUS = CENTER - 6;
 
-  function wrapText(text, maxChars) {
-    // Simple word-wrap for long labels; falls back to truncation for single unbreakable words.
+  // Slice labels default to a large, readable size and shrink only as far
+  // as a given label actually needs, rather than one blanket size driven by
+  // how many slices are on the wheel. Weighted slices can also vary a lot in
+  // angular width, so each label is fit against its own slice's real space.
+  const LABEL_BASE_FONT_SIZE = 24;
+  const LABEL_MIN_FONT_SIZE = 10;
+  const LABEL_HUB_CLEARANCE = 50; // px; keeps text off the center hub
+
+  // Word-wraps text to at most 2 lines using real measured pixel widths
+  // (ctx.font must already be set to the size being tested). Falls back to
+  // an ellipsis-truncated second line if it still doesn't fit in 2 lines.
+  function wrapTextToWidth(text, maxWidthPx) {
     const words = text.split(" ");
     const lines = [];
     let line = "";
     words.forEach(word => {
       const test = line ? line + " " + word : word;
-      if (test.length > maxChars && line) {
+      if (line && ctx.measureText(test).width > maxWidthPx) {
         lines.push(line);
         line = word;
       } else {
@@ -1306,12 +1316,56 @@
       }
     });
     if (line) lines.push(line);
-    // Cap to 2 lines max, truncating the second with an ellipsis if needed.
     if (lines.length > 2) {
-      lines[1] = lines[1].slice(0, maxChars - 1) + "…";
+      let second = lines[1];
+      while (second.length > 1 && ctx.measureText(second + "…").width > maxWidthPx) {
+        second = second.slice(0, -1);
+      }
+      lines[1] = second + "…";
       lines.length = 2;
     }
     return lines;
+  }
+
+  // Finds the largest font size (down to the floor) whose wrapped label fits
+  // both radially (line width, text reads outward from near the hub) and
+  // tangentially (line count x line height, bounded by the slice's own
+  // angular width so it doesn't crowd into neighboring slices).
+  function fitSliceLabel(text, textRadiusForOption, sliceAngleWidth) {
+    const radialBudget = Math.max(20, textRadiusForOption - LABEL_HUB_CLEARANCE);
+    const tangentialBudget = Math.max(20, sliceAngleWidth * textRadiusForOption * 0.82);
+    for (let fontSize = LABEL_BASE_FONT_SIZE; fontSize >= LABEL_MIN_FONT_SIZE; fontSize--) {
+      ctx.font = "700 " + fontSize + "px Segoe UI, sans-serif";
+      const lineHeight = fontSize * 1.15;
+      if (ctx.measureText(text).width <= radialBudget && lineHeight <= tangentialBudget) {
+        return { fontSize, lines: [text] };
+      }
+      const lines = wrapTextToWidth(text, radialBudget);
+      const fitsRadially = lines.every(l => ctx.measureText(l).width <= radialBudget);
+      if (fitsRadially && lines.length * lineHeight <= tangentialBudget) {
+        return { fontSize, lines };
+      }
+    }
+    ctx.font = "700 " + LABEL_MIN_FONT_SIZE + "px Segoe UI, sans-serif";
+    return { fontSize: LABEL_MIN_FONT_SIZE, lines: wrapTextToWidth(text, radialBudget) };
+  }
+
+  // Label fits only depend on each option's text/tier/weight (which set its
+  // slice's angular width), never on rotation — cached so the idle shimmer's
+  // continuous redraw loop and mid-spin frames don't recompute this every frame.
+  let labelFitCache = { key: "", fits: [] };
+
+  function getLabelFits(vis, boundaries) {
+    const key = vis.map(o => o.text + "" + (o.weight || 1) + "" + (o.prizeTier || "happy")).join("");
+    if (key !== labelFitCache.key) {
+      const fits = vis.map((opt, i) => {
+        const isTrophy = opt.prizeTier === "trophy";
+        const textRadiusForOption = RADIUS - 24 - (isTrophy ? 12 : 0);
+        return fitSliceLabel(opt.text, textRadiusForOption, boundaries[i + 1] - boundaries[i]);
+      });
+      labelFitCache = { key, fits };
+    }
+    return labelFitCache.fits;
   }
 
   // Only options with visible !== false ever appear on the wheel — hidden
@@ -1419,6 +1473,7 @@
     }
 
     // Pass 4: labels and trophy icons, on top of everything else.
+    const labelFits = getLabelFits(vis, boundaries);
     for (let i = 0; i < n; i++) {
       const [startAngle, endAngle] = sliceAngles(i);
       const opt = vis[i];
@@ -1432,9 +1487,7 @@
       ctx.translate(CENTER, CENTER);
       ctx.rotate(midAngle);
 
-      const maxChars = n <= 6 ? 16 : n <= 10 ? 13 : 10;
-      const lines = wrapText(opt.text, maxChars);
-      const fontSize = n <= 6 ? 20 : n <= 10 ? 17 : 14;
+      const { fontSize, lines } = labelFits[i];
       ctx.font = "700 " + fontSize + "px Segoe UI, sans-serif";
       ctx.textAlign = "right";
       ctx.textBaseline = "middle";
