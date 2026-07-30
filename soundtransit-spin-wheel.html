@@ -376,36 +376,6 @@
 
   .tab-panel[hidden] { display: none; }
 
-  /* ===== Prize tier control (sad / happy / trophy) per option row ===== */
-  .prize-tier-control {
-    display: inline-flex;
-    border-radius: 999px;
-    background: var(--bg-light);
-    padding: 2px;
-    gap: 2px;
-    flex-shrink: 0;
-  }
-
-  .tier-btn {
-    border: none;
-    background: transparent;
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    font-size: 1rem;
-    line-height: 1;
-    cursor: pointer;
-    opacity: 0.35;
-    transition: opacity 0.15s ease, background 0.15s ease;
-  }
-
-  .tier-btn:hover { opacity: 0.7; }
-
-  .tier-btn[aria-pressed="true"] { opacity: 1; }
-  .tier-btn.tier-sad[aria-pressed="true"] { background: #d7dde2; }
-  .tier-btn.tier-happy[aria-pressed="true"] { background: #cdeee2; }
-  .tier-btn.tier-trophy[aria-pressed="true"] { background: var(--hilite-yellow); }
-
   /* ===== Stats / Logs list contents (shared) ===== */
   .stats-total {
     margin: 0 0 0.75rem;
@@ -536,11 +506,14 @@
   .option-row {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    flex-wrap: wrap;
+    gap: 0.4rem;
     background: var(--bg-light);
     border-radius: 10px;
     padding: 0.4rem 0.5rem;
   }
+
+  .option-row-hidden { opacity: 0.55; }
 
   .option-row input[type="text"] {
     flex: 1;
@@ -634,6 +607,38 @@
   /* .color-option-auto background (a conic-gradient of the full palette) is
      set inline via JS so it always reflects the actual PALETTE array. */
 
+  /* Row-oriented popover for the effect and size buttons — reuses
+     .color-picker's position/shadow/padding, just laid out as a single row
+     of a few pill buttons instead of a 5-column swatch grid. */
+  .color-picker.popover-row {
+    display: flex;
+    flex-direction: row;
+    gap: 0.35rem;
+    max-width: none;
+    white-space: nowrap;
+  }
+
+  /* Same specificity as .color-picker[hidden] but must win when both
+     classes are present — otherwise hidden popover-row popovers stay
+     visually open since this rule comes later in source order. */
+  .color-picker.popover-row[hidden] { display: none; }
+
+  .popover-option {
+    border: none;
+    background: var(--bg-light);
+    border-radius: 999px;
+    padding: 0.35rem 0.55rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--wave-blue);
+    cursor: pointer;
+  }
+
+  .popover-option.selected { background: var(--wave-teal); color: #fff; }
+  .popover-option.tier-sad.selected { background: #d7dde2; color: var(--wave-blue); }
+  .popover-option.tier-happy.selected { background: #cdeee2; color: var(--wave-blue); }
+  .popover-option.tier-trophy.selected { background: var(--hilite-yellow); color: var(--wave-blue); }
+
   .icon-btn {
     background: none;
     border: none;
@@ -643,11 +648,41 @@
     border-radius: 6px;
     color: var(--railway-gray);
     line-height: 1;
+    flex-shrink: 0;
   }
 
   .icon-btn:hover { background: #e2e6ea; }
 
   .icon-btn.delete { color: var(--action-pink); }
+
+  /* Visibility toggle: dim when off, bright + tinted when on. */
+  .icon-btn.eye-btn { opacity: 0.4; }
+  .icon-btn.eye-btn:hover { opacity: 0.7; }
+  .icon-btn.eye-btn[aria-pressed="true"] { opacity: 1; background: #cdeee2; }
+
+  .icon-btn.effect-btn { background: #fff; }
+  .icon-btn.effect-btn:hover,
+  .icon-btn.effect-btn[aria-expanded="true"] { background: #e2e6ea; }
+
+  /* Slice-size (weight) control: a compact text pill rather than an icon,
+     since "0.5x/1x/1.5x/2x" reads better as text than as a glyph. */
+  .size-btn {
+    border: none;
+    background: #fff;
+    color: var(--wave-blue);
+    font-weight: 700;
+    font-size: 0.75rem;
+    padding: 0.35rem 0.5rem;
+    border-radius: 999px;
+    cursor: pointer;
+    flex-shrink: 0;
+    min-width: 2.5rem;
+  }
+
+  .size-btn:hover,
+  .size-btn[aria-expanded="true"] {
+    box-shadow: 0 0 0 2px var(--wave-teal);
+  }
 
   /* Drag handle for reordering options */
   .drag-handle {
@@ -679,6 +714,11 @@
     font-weight: 700;
     font-size: 0.9rem;
     cursor: pointer;
+  }
+
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
 
   .btn-primary { background: var(--wave-green); color: #fff; }
@@ -844,7 +884,7 @@
 <div class="modal-overlay" id="pinCreateOverlay">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pinCreateTitle" id="pinCreateModal">
     <h2 id="pinCreateTitle">Create a Staff PIN</h2>
-    <p class="hint">Set a PIN to protect event settings on this device. You'll enter it again each time you need to make changes.</p>
+    <p class="hint" id="pinCreateHint">Set a PIN to protect event settings on this device. You'll enter it again each time you need to make changes.</p>
     <form id="pinCreateForm" novalidate>
       <label for="pinCreateInput" class="sr-only">New PIN</label>
       <input type="password" inputmode="numeric" autocomplete="off" class="field-input" id="pinCreateInput" placeholder="New PIN (4+ digits)">
@@ -868,16 +908,12 @@
       <button class="tab-btn active" id="tabBtnWheel" type="button" role="tab" aria-selected="true" aria-controls="tabPanelWheel" data-tab="wheel">Wheel</button>
       <button class="tab-btn" id="tabBtnLogs" type="button" role="tab" aria-selected="false" aria-controls="tabPanelLogs" data-tab="logs">Logs</button>
       <button class="tab-btn" id="tabBtnStats" type="button" role="tab" aria-selected="false" aria-controls="tabPanelStats" data-tab="stats">Stats</button>
+      <button class="tab-btn" id="tabBtnConfig" type="button" role="tab" aria-selected="false" aria-controls="tabPanelConfig" data-tab="config">Config</button>
     </div>
 
     <!-- ===== Wheel tab ===== -->
     <div class="tab-panel" id="tabPanelWheel" role="tabpanel" aria-labelledby="tabBtnWheel">
-      <div class="settings-field">
-        <label for="resetSecondsInput">Seconds to show each result before returning to the email screen</label>
-        <input type="number" id="resetSecondsInput" class="field-input" min="2" max="60" step="1">
-      </div>
-
-      <p class="hint">Tap &#128542;/&#128578;/&#127942; on each option to set what happens when it's landed on: &#128542; plays a "womp womp" letdown with no prize, &#128578; is a normal win with no effect, and &#127942; triggers the confetti celebration. At least 2 options total are required to spin. Changes are saved to this browser's local storage.</p>
+      <p class="hint">Each row: &#128065;&#65039; shows/hides the option on the wheel, the emoji button sets its effect (&#128542; "womp womp" letdown with no prize, &#128578; normal win, &#127942; confetti celebration), the ×-size button controls its slice size from 0.5&times; to 2&times; (bigger size means better odds), and &#128465;&#65039; deletes it. At least 2 visible options are required to spin. Changes are saved to this browser's local storage.</p>
 
       <div class="add-row">
         <label for="newOptionInput" class="sr-only">New option text</label>
@@ -927,6 +963,20 @@
       </div>
     </div>
 
+    <!-- ===== Config tab ===== -->
+    <div class="tab-panel" id="tabPanelConfig" role="tabpanel" aria-labelledby="tabBtnConfig" hidden>
+      <div class="settings-field">
+        <label for="resetSecondsInput">Seconds to show each result before returning to the email screen</label>
+        <input type="number" id="resetSecondsInput" class="field-input" min="2" max="60" step="1">
+      </div>
+
+      <div class="settings-field">
+        <label>Staff PIN</label>
+        <p class="hint">Protects the Event toggle and this Settings menu on this device. Casual deterrent only (client-side, visible in page source) — not real security.</p>
+        <button class="btn btn-outline" id="changePinBtn" type="button">Change PIN</button>
+      </div>
+    </div>
+
     <div class="modal-actions">
       <button class="btn btn-outline" id="closeSettingsBtn" type="button">Close</button>
     </div>
@@ -950,16 +1000,25 @@
   const MIN_RESET_SECONDS = 2;
   const MAX_RESET_SECONDS = 60;
   const PRIZE_TIERS = ["sad", "happy", "trophy"];
+  // Slice "size" multiplier steps — a bigger multiplier gives an option a
+  // proportionally larger wedge and a proportionally better chance of being
+  // landed on, since the winning slice is chosen by weighted random pick.
+  const WEIGHT_STEPS = [0.5, 1, 1.5, 2];
+  function formatWeight(w) {
+    return (w % 1 === 0 ? w.toFixed(0) : String(w)) + "×";
+  }
 
   const DEFAULT_OPTIONS_CONFIG = [
-    { text: "Not a winner", prizeTier: "sad" },
+    { text: "Not a winner", prizeTier: "sad", color: "#333333" },
     { text: "Spin again" },
     { text: "ST Store Discount" },
     { text: "Hat", prizeTier: "trophy" },
+    { text: "Not a winner", prizeTier: "sad", color: "#333333" },
     { text: "Bag" },
     { text: "Scarf" },
-    { text: "Sticker" },
     { text: "Plushie", prizeTier: "trophy" },
+    { text: "Not a winner", prizeTier: "sad", color: "#333333" },
+    { text: "Sticker" },
     { text: "Toy Train" }
   ];
 
@@ -1046,7 +1105,15 @@
   }
 
   function buildDefaultOptions() {
-    return DEFAULT_OPTIONS_CONFIG.map(o => ({ id: makeId(), text: o.text, prizeTier: o.prizeTier || "happy", color: null }));
+    return DEFAULT_OPTIONS_CONFIG.map(o => ({ id: makeId(), text: o.text, prizeTier: o.prizeTier || "happy", color: o.color || null, visible: true, weight: 1 }));
+  }
+
+  // Editor rows mutate opt.text/prizeTier/color in place, so the Wheel tab's
+  // working copy needs its own option objects — a plain .slice() only copies
+  // the array, leaving every option a shared reference with the live,
+  // already-saved `options`, which would leak unsaved edits onto the wheel.
+  function cloneOptionsList(list) {
+    return list.map(o => ({ ...o }));
   }
 
   // Accepts a legacy plain string, a legacy { grandPrize: boolean } shaped
@@ -1054,7 +1121,7 @@
   // current shape.
   function normalizeOption(o) {
     if (typeof o === "string") {
-      return { id: makeId(), text: o, prizeTier: "happy", color: null };
+      return { id: makeId(), text: o, prizeTier: "happy", color: null, visible: true, weight: 1 };
     }
     let prizeTier = (o && typeof o.prizeTier === "string" && PRIZE_TIERS.includes(o.prizeTier))
       ? o.prizeTier
@@ -1062,16 +1129,23 @@
     let color = (o && typeof o.color === "string") ? o.color.toUpperCase() : null;
     if (color && LEGACY_COLOR_REMAP[color]) color = LEGACY_COLOR_REMAP[color];
     if (!color || !PALETTE.includes(color)) color = null;
+    // Absent/legacy data defaults to visible so pre-existing saved options
+    // don't silently vanish from the wheel when this field is introduced.
+    const visible = !(o && o.visible === false);
+    const weight = (o && WEIGHT_STEPS.includes(o.weight)) ? o.weight : 1;
     return {
       id: (o && typeof o.id === "string") ? o.id : makeId(),
       text: (o && typeof o.text === "string") ? o.text : "",
       prizeTier,
-      color
+      color,
+      visible,
+      weight
     };
   }
 
   let options = loadOptions();          // live options driving the wheel
   let editingOptions = [];              // working copy used inside Settings' Wheel tab
+  let savedOptionsSnapshot = "";        // serialized editingOptions as of the last save, for the dirty check
   let stats = loadStats();              // { [optionId]: { text, count } }, persisted win history
   let currentRotation = 0;              // radians, current wheel rotation
   let isSpinning = false;
@@ -1108,7 +1182,8 @@
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length >= 2) {
         const normalized = parsed.map(normalizeOption).filter(o => o.text.trim().length > 0);
-        return normalized.length >= 2 ? normalized : buildDefaultOptions();
+        const visibleCount = normalized.filter(o => o.visible !== false).length;
+        return visibleCount >= 2 ? normalized : buildDefaultOptions();
       }
       return buildDefaultOptions();
     } catch (e) {
@@ -1216,14 +1291,24 @@
   const CENTER = CANVAS_SIZE / 2;
   const RADIUS = CENTER - 6;
 
-  function wrapText(text, maxChars) {
-    // Simple word-wrap for long labels; falls back to truncation for single unbreakable words.
+  // Slice labels default to a large, readable size and shrink only as far
+  // as a given label actually needs, rather than one blanket size driven by
+  // how many slices are on the wheel. Weighted slices can also vary a lot in
+  // angular width, so each label is fit against its own slice's real space.
+  const LABEL_BASE_FONT_SIZE = 24;
+  const LABEL_MIN_FONT_SIZE = 10;
+  const LABEL_HUB_CLEARANCE = 50; // px; keeps text off the center hub
+
+  // Word-wraps text to at most 2 lines using real measured pixel widths
+  // (ctx.font must already be set to the size being tested). Falls back to
+  // an ellipsis-truncated second line if it still doesn't fit in 2 lines.
+  function wrapTextToWidth(text, maxWidthPx) {
     const words = text.split(" ");
     const lines = [];
     let line = "";
     words.forEach(word => {
       const test = line ? line + " " + word : word;
-      if (test.length > maxChars && line) {
+      if (line && ctx.measureText(test).width > maxWidthPx) {
         lines.push(line);
         line = word;
       } else {
@@ -1231,19 +1316,86 @@
       }
     });
     if (line) lines.push(line);
-    // Cap to 2 lines max, truncating the second with an ellipsis if needed.
     if (lines.length > 2) {
-      lines[1] = lines[1].slice(0, maxChars - 1) + "…";
+      let second = lines[1];
+      while (second.length > 1 && ctx.measureText(second + "…").width > maxWidthPx) {
+        second = second.slice(0, -1);
+      }
+      lines[1] = second + "…";
       lines.length = 2;
     }
     return lines;
+  }
+
+  // Finds the largest font size (down to the floor) whose wrapped label fits
+  // both radially (line width, text reads outward from near the hub) and
+  // tangentially (line count x line height, bounded by the slice's own
+  // angular width so it doesn't crowd into neighboring slices).
+  function fitSliceLabel(text, textRadiusForOption, sliceAngleWidth) {
+    const radialBudget = Math.max(20, textRadiusForOption - LABEL_HUB_CLEARANCE);
+    const tangentialBudget = Math.max(20, sliceAngleWidth * textRadiusForOption * 0.82);
+    for (let fontSize = LABEL_BASE_FONT_SIZE; fontSize >= LABEL_MIN_FONT_SIZE; fontSize--) {
+      ctx.font = "700 " + fontSize + "px Segoe UI, sans-serif";
+      const lineHeight = fontSize * 1.15;
+      if (ctx.measureText(text).width <= radialBudget && lineHeight <= tangentialBudget) {
+        return { fontSize, lines: [text] };
+      }
+      const lines = wrapTextToWidth(text, radialBudget);
+      const fitsRadially = lines.every(l => ctx.measureText(l).width <= radialBudget);
+      if (fitsRadially && lines.length * lineHeight <= tangentialBudget) {
+        return { fontSize, lines };
+      }
+    }
+    ctx.font = "700 " + LABEL_MIN_FONT_SIZE + "px Segoe UI, sans-serif";
+    return { fontSize: LABEL_MIN_FONT_SIZE, lines: wrapTextToWidth(text, radialBudget) };
+  }
+
+  // Label fits only depend on each option's text/tier/weight (which set its
+  // slice's angular width), never on rotation — cached so the idle shimmer's
+  // continuous redraw loop and mid-spin frames don't recompute this every frame.
+  let labelFitCache = { key: "", fits: [] };
+
+  function getLabelFits(vis, boundaries) {
+    const key = vis.map(o => o.text + "" + (o.weight || 1) + "" + (o.prizeTier || "happy")).join("");
+    if (key !== labelFitCache.key) {
+      const fits = vis.map((opt, i) => {
+        const isTrophy = opt.prizeTier === "trophy";
+        const textRadiusForOption = RADIUS - 24 - (isTrophy ? 12 : 0);
+        return fitSliceLabel(opt.text, textRadiusForOption, boundaries[i + 1] - boundaries[i]);
+      });
+      labelFitCache = { key, fits };
+    }
+    return labelFitCache.fits;
+  }
+
+  // Only options with visible !== false ever appear on the wheel — hidden
+  // options stay in the saved list (and the editor) but are excluded here.
+  function getVisibleOptions() {
+    return options.filter(o => o.visible !== false);
+  }
+
+  // Cumulative slice boundaries (radians, unrotated, starting at angle 0)
+  // for a list of visible options, sized proportionally to each option's
+  // weight (the "size" control) rather than split evenly. boundaries[i] to
+  // boundaries[i+1] is slice i's [start, end) span; boundaries[n] === 2*PI.
+  function computeSliceBoundaries(list) {
+    const totalWeight = list.reduce((sum, o) => sum + (o.weight || 1), 0) || list.length || 1;
+    const boundaries = [0];
+    let acc = 0;
+    list.forEach(o => {
+      acc += ((o.weight || 1) / totalWeight) * Math.PI * 2;
+      boundaries.push(acc);
+    });
+    if (boundaries.length > 1) boundaries[boundaries.length - 1] = Math.PI * 2; // guard against float drift
+    return boundaries;
   }
 
   // `now` drives the idle shimmer sweep; defaults to "this instant" for
   // one-off redraws (resize, save) that don't pass a timestamp of their own.
   function drawWheel(rotation, now) {
     if (now === undefined) now = performance.now();
-    const n = options.length;
+    const vis = getVisibleOptions();
+    const n = vis.length;
     ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
     if (n === 0) {
@@ -1259,14 +1411,13 @@
       return;
     }
 
-    const sliceAngle = (Math.PI * 2) / n;
+    const boundaries = computeSliceBoundaries(vis);
     // Repeating 0..1 ramp for the shimmer sweep (~2.2s per pass, idle only).
     const shimmerActive = !isSpinning && !prefersReducedMotion.matches;
     const shimmerT = (now / 2200) % 1;
 
     function sliceAngles(i) {
-      const startAngle = rotation + i * sliceAngle;
-      return [startAngle, startAngle + sliceAngle];
+      return [rotation + boundaries[i], rotation + boundaries[i + 1]];
     }
 
     function tracePath(startAngle, endAngle) {
@@ -1279,7 +1430,7 @@
     // Pass 1: fills.
     for (let i = 0; i < n; i++) {
       const [startAngle, endAngle] = sliceAngles(i);
-      const color = options[i].color || PALETTE[i % PALETTE.length];
+      const color = vis[i].color || PALETTE[i % PALETTE.length];
       tracePath(startAngle, endAngle);
       ctx.fillStyle = color;
       ctx.fill();
@@ -1289,9 +1440,9 @@
     // (trophy tier) slice's face (clipped to its wedge), repeating while idle.
     if (shimmerActive) {
       for (let i = 0; i < n; i++) {
-        if (options[i].prizeTier !== "trophy") continue;
+        if (vis[i].prizeTier !== "trophy") continue;
         const [startAngle, endAngle] = sliceAngles(i);
-        const midAngle = startAngle + sliceAngle / 2;
+        const midAngle = (startAngle + endAngle) / 2;
 
         ctx.save();
         tracePath(startAngle, endAngle);
@@ -1322,22 +1473,21 @@
     }
 
     // Pass 4: labels and trophy icons, on top of everything else.
+    const labelFits = getLabelFits(vis, boundaries);
     for (let i = 0; i < n; i++) {
       const [startAngle, endAngle] = sliceAngles(i);
-      const opt = options[i];
+      const opt = vis[i];
       const color = opt.color || PALETTE[i % PALETTE.length];
       const isTrophy = opt.prizeTier === "trophy";
 
       ctx.fillStyle = isLightColor(color) ? "#2B376E" : "#FFFFFF";
 
-      const midAngle = startAngle + sliceAngle / 2;
+      const midAngle = (startAngle + endAngle) / 2;
       ctx.save();
       ctx.translate(CENTER, CENTER);
       ctx.rotate(midAngle);
 
-      const maxChars = n <= 6 ? 16 : n <= 10 ? 13 : 10;
-      const lines = wrapText(opt.text, maxChars);
-      const fontSize = n <= 6 ? 20 : n <= 10 ? 17 : 14;
+      const { fontSize, lines } = labelFits[i];
       ctx.font = "700 " + fontSize + "px Segoe UI, sans-serif";
       ctx.textAlign = "right";
       ctx.textBaseline = "middle";
@@ -1490,20 +1640,26 @@
   /* ============================================================
      Spin logic
      ============================================================ */
-  // Determine which option index sits under the fixed top pointer,
-  // given the wheel's current rotation (radians, normalized).
+  // Determine which visible-option index sits under the fixed top pointer,
+  // given the wheel's current rotation (radians, normalized). Slices are
+  // sized by weight, not evenly, so this walks the cumulative boundaries
+  // rather than dividing by a constant slice angle.
   function getWinningIndex(rotation) {
-    const n = options.length;
-    const sliceAngle = (Math.PI * 2) / n;
+    const vis = getVisibleOptions();
+    const n = vis.length;
+    if (n === 0) return -1;
+    const boundaries = computeSliceBoundaries(vis);
     // Pointer is fixed at the top (angle = -PI/2 in standard canvas coords,
-    // i.e. 270deg / -90deg). Slice i spans [rotation + i*sliceAngle, rotation + (i+1)*sliceAngle)
+    // i.e. 270deg / -90deg). Slice i spans [rotation + boundaries[i], rotation + boundaries[i+1])
     // measured from angle 0 (positive x-axis), going clockwise as rotation increases.
     // We need the slice whose range contains the pointer angle, accounting for rotation.
     const pointerAngle = -Math.PI / 2;
     let normalized = (pointerAngle - rotation) % (Math.PI * 2);
     normalized = ((normalized % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-    const index = Math.floor(normalized / sliceAngle);
-    return ((index % n) + n) % n;
+    for (let i = 0; i < n; i++) {
+      if (normalized >= boundaries[i] && normalized < boundaries[i + 1]) return i;
+    }
+    return n - 1; // float-edge fallback (normalized landed exactly on 2*PI)
   }
 
   function easeOutCubic(t) {
@@ -1517,8 +1673,10 @@
   function spin() {
     if (isSpinning) return;
     if (eventModeOn && pendingGuestEmail === null) return; // gate should be showing; no active guest to spin for
-    if (options.length < 2) {
-      showResult(null, "Add at least 2 options to spin (use the gear icon).");
+    const vis = getVisibleOptions();
+    const n = vis.length;
+    if (n < 2) {
+      showResult(null, "Add at least 2 visible options to spin (use the gear icon).");
       return;
     }
 
@@ -1532,18 +1690,26 @@
     resultPanel.classList.add("empty");
     winnerText.textContent = "Spinning…";
 
-    const n = options.length;
-    const sliceAngle = (Math.PI * 2) / n;
+    const boundaries = computeSliceBoundaries(vis);
+    const totalWeight = vis.reduce((sum, o) => sum + (o.weight || 1), 0) || n;
 
-    // Pick the winning slice up front, then compute the exact end rotation
-    // that lands that slice's center under the pointer. This guarantees the
-    // visual stop and the reported result always agree.
-    const winningIndex = Math.floor(Math.random() * n);
+    // Pick the winning slice up front via a weighted random draw (bigger
+    // "size" = proportionally more likely), then compute the exact end
+    // rotation that lands that slice's center under the pointer. This
+    // guarantees the visual stop and the reported result always agree.
+    let r = Math.random() * totalWeight;
+    let winningIndex = n - 1;
+    for (let i = 0; i < n; i++) {
+      const w = vis[i].weight || 1;
+      if (r < w) { winningIndex = i; break; }
+      r -= w;
+    }
+    const sliceMid = (boundaries[winningIndex] + boundaries[winningIndex + 1]) / 2;
 
     // Rotation needed so winningIndex's center aligns with pointer (-PI/2):
-    // pointerAngle = rotationEnd + winningIndex*sliceAngle + sliceAngle/2 (mod 2PI)
-    // => rotationEnd = pointerAngle - (winningIndex + 0.5) * sliceAngle (mod 2PI)
-    const targetWithinTurn = (((-Math.PI / 2) - (winningIndex + 0.5) * sliceAngle) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+    // pointerAngle = rotationEnd + sliceMid (mod 2PI)
+    // => rotationEnd = pointerAngle - sliceMid (mod 2PI)
+    const targetWithinTurn = (((-Math.PI / 2) - sliceMid) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
 
     const extraTurns = prefersReducedMotion.matches ? 2 : (6 + Math.floor(Math.random() * 3)); // 6-8 full turns
     const startRotation = currentRotation;
@@ -1579,8 +1745,10 @@
     isSpinning = false;
     spinBtn.disabled = false;
     // Cross-check against geometry to guarantee consistency, then report.
+    // Both indices are into the visible-options list, not the full options array.
+    const vis = getVisibleOptions();
     const actualIndex = getWinningIndex(currentRotation);
-    const winner = options[actualIndex] !== undefined ? options[actualIndex] : options[expectedIndex];
+    const winner = vis[actualIndex] !== undefined ? vis[actualIndex] : vis[expectedIndex];
     recordWin(winner);
 
     // Always log the spin — email is attached only if this spin came through
@@ -1785,13 +1953,20 @@
 
   const pinCreateOverlay = document.getElementById("pinCreateOverlay");
   const pinCreateForm = document.getElementById("pinCreateForm");
+  const pinCreateTitle = document.getElementById("pinCreateTitle");
+  const pinCreateHint = document.getElementById("pinCreateHint");
   const pinCreateInput = document.getElementById("pinCreateInput");
   const pinCreateConfirmInput = document.getElementById("pinCreateConfirmInput");
   const pinCreateError = document.getElementById("pinCreateError");
+  const pinCreateSubmitBtn = document.getElementById("pinCreateSubmitBtn");
   const pinCreateCancelBtn = document.getElementById("pinCreateCancelBtn");
 
   let lastFocusedElementPin = null;
   let lastFocusedElementPinCreate = null;
+  // Set when the "Change PIN" flow (from the Config tab) opens this modal, so
+  // both a successful update and a cancel return to Settings' Config tab
+  // instead of the normal first-time-creation behavior of just closing.
+  let pinCreateCancelAction = null;
 
   // Routes a staff-only action through PIN protection: creates a PIN the
   // very first time (no PIN exists yet on this device), otherwise requires
@@ -1851,6 +2026,12 @@
   });
 
   function openPinCreate() {
+    const isChange = !!staffPin;
+    pinCreateTitle.textContent = isChange ? "Change Staff PIN" : "Create a Staff PIN";
+    pinCreateHint.textContent = isChange
+      ? "Enter a new PIN to replace the current one on this device."
+      : "Set a PIN to protect event settings on this device. You'll enter it again each time you need to make changes.";
+    pinCreateSubmitBtn.textContent = isChange ? "Update PIN" : "Set PIN";
     pinCreateError.textContent = "";
     pinCreateInput.value = "";
     pinCreateConfirmInput.value = "";
@@ -1864,7 +2045,13 @@
     pinCreateOverlay.classList.remove("open");
     document.removeEventListener("keydown", onPinCreateModalKeydown);
     pendingUnlockAction = null;
-    if (lastFocusedElementPinCreate) lastFocusedElementPinCreate.focus();
+    const cancelAction = pinCreateCancelAction;
+    pinCreateCancelAction = null;
+    if (cancelAction) {
+      cancelAction();
+    } else if (lastFocusedElementPinCreate) {
+      lastFocusedElementPinCreate.focus();
+    }
   }
 
   function onPinCreateModalKeydown(e) {
@@ -1954,11 +2141,13 @@
     { key: "trophy", icon: "\u{1F3C6}", label: "Grand Prize — confetti celebration" }
   ];
 
-  // Builds one full row (drag handle, color swatch, editable text, prize
-  // tier control, delete) for the single options list.
+  // Builds one full row (drag handle, color swatch, editable text, then a
+  // compact right-hand cluster: visibility, effect, size, delete) for the
+  // single options list.
   function createOptionRow(opt) {
     const li = document.createElement("li");
-    li.className = "option-row";
+    const isVisible = opt.visible !== false;
+    li.className = "option-row" + (isVisible ? "" : " option-row-hidden");
     li.dataset.id = opt.id;
 
     const handle = document.createElement("button");
@@ -2076,33 +2265,126 @@
     input.setAttribute("aria-label", "Option text");
     input.addEventListener("input", () => {
       opt.text = input.value;
+      updateSaveButtonState();
     });
 
-    const tierControl = document.createElement("div");
-    tierControl.className = "prize-tier-control";
-    tierControl.setAttribute("role", "group");
-    tierControl.setAttribute("aria-label", "Prize tier for " + opt.text);
+    // Visibility toggle: hidden options stay saved and editable but are
+    // excluded from the wheel (drawWheel/spin both read only visible !== false).
+    const visBtn = document.createElement("button");
+    visBtn.type = "button";
+    visBtn.className = "icon-btn eye-btn";
+    visBtn.textContent = "\u{1F441}\u{FE0F}"; // 👁️
+    visBtn.setAttribute("aria-pressed", isVisible ? "true" : "false");
+    visBtn.title = isVisible ? "Visible on wheel — tap to hide" : "Hidden from wheel — tap to show";
+    visBtn.setAttribute("aria-label", (isVisible ? "Hide " : "Show ") + opt.text + " on the wheel");
+    visBtn.addEventListener("click", () => {
+      opt.visible = !isVisible;
+      renderEditorList();
+    });
+
+    // Effect: a single button showing the current tier's emoji, opening a
+    // popover to pick sad/happy/trophy — a more compact replacement for the
+    // old always-visible 3-button segmented control.
+    const effectWrap = document.createElement("div");
+    effectWrap.className = "swatch-wrap";
+
+    const currentTier = TIER_INFO.find(t => t.key === (opt.prizeTier || "happy")) || TIER_INFO[1];
+
+    const effectBtn = document.createElement("button");
+    effectBtn.type = "button";
+    effectBtn.className = "icon-btn effect-btn";
+    effectBtn.textContent = currentTier.icon;
+    effectBtn.setAttribute("aria-haspopup", "true");
+    effectBtn.setAttribute("aria-expanded", "false");
+    effectBtn.title = currentTier.label;
+    effectBtn.setAttribute("aria-label", "Effect for " + opt.text + ". Current: " + currentTier.label);
+
+    const effectPicker = document.createElement("div");
+    effectPicker.className = "color-picker popover-row";
+    effectPicker.setAttribute("role", "menu");
+    effectPicker.hidden = true;
 
     TIER_INFO.forEach(t => {
-      const tierBtn = document.createElement("button");
-      tierBtn.type = "button";
-      tierBtn.className = "tier-btn tier-" + t.key;
-      tierBtn.textContent = t.icon;
-      const isActive = (opt.prizeTier || "happy") === t.key;
-      tierBtn.setAttribute("aria-pressed", isActive ? "true" : "false");
-      tierBtn.title = t.label;
-      tierBtn.setAttribute("aria-label", t.label);
-      tierBtn.addEventListener("click", () => {
+      const tierOptBtn = document.createElement("button");
+      tierOptBtn.type = "button";
+      tierOptBtn.className = "popover-option tier-" + t.key + (currentTier.key === t.key ? " selected" : "");
+      tierOptBtn.textContent = t.icon;
+      tierOptBtn.title = t.label;
+      tierOptBtn.setAttribute("role", "menuitem");
+      tierOptBtn.setAttribute("aria-label", t.label);
+      tierOptBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
         opt.prizeTier = t.key;
         renderEditorList();
       });
-      tierControl.appendChild(tierBtn);
+      effectPicker.appendChild(tierOptBtn);
     });
+
+    effectBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const wasOpen = !effectPicker.hidden;
+      closeAllColorPickers();
+      if (!wasOpen) {
+        effectPicker.hidden = false;
+        effectBtn.setAttribute("aria-expanded", "true");
+      }
+    });
+
+    effectWrap.appendChild(effectBtn);
+    effectWrap.appendChild(effectPicker);
+
+    // Size: a slice-weight multiplier (0.5x-2x) that changes this option's
+    // share of the wheel's angle, and so its odds of being landed on.
+    const sizeWrap = document.createElement("div");
+    sizeWrap.className = "swatch-wrap";
+
+    const currentWeight = WEIGHT_STEPS.includes(opt.weight) ? opt.weight : 1;
+
+    const sizeBtn = document.createElement("button");
+    sizeBtn.type = "button";
+    sizeBtn.className = "size-btn";
+    sizeBtn.textContent = formatWeight(currentWeight);
+    sizeBtn.setAttribute("aria-haspopup", "true");
+    sizeBtn.setAttribute("aria-expanded", "false");
+    sizeBtn.title = "Slice size — a bigger size means better odds of landing on this option";
+    sizeBtn.setAttribute("aria-label", "Slice size for " + opt.text + ". Current: " + formatWeight(currentWeight) + ". A bigger size means better odds of landing on this option.");
+
+    const sizePicker = document.createElement("div");
+    sizePicker.className = "color-picker popover-row";
+    sizePicker.setAttribute("role", "menu");
+    sizePicker.hidden = true;
+
+    WEIGHT_STEPS.forEach(w => {
+      const sizeOptBtn = document.createElement("button");
+      sizeOptBtn.type = "button";
+      sizeOptBtn.className = "popover-option size-option" + (currentWeight === w ? " selected" : "");
+      sizeOptBtn.textContent = formatWeight(w);
+      sizeOptBtn.setAttribute("role", "menuitem");
+      sizeOptBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        opt.weight = w;
+        renderEditorList();
+      });
+      sizePicker.appendChild(sizeOptBtn);
+    });
+
+    sizeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const wasOpen = !sizePicker.hidden;
+      closeAllColorPickers();
+      if (!wasOpen) {
+        sizePicker.hidden = false;
+        sizeBtn.setAttribute("aria-expanded", "true");
+      }
+    });
+
+    sizeWrap.appendChild(sizeBtn);
+    sizeWrap.appendChild(sizePicker);
 
     const delBtn = document.createElement("button");
     delBtn.type = "button";
     delBtn.className = "icon-btn delete";
-    delBtn.innerHTML = "&#10005;";
+    delBtn.textContent = "\u{1F5D1}\u{FE0F}"; // 🗑️
     delBtn.setAttribute("aria-label", "Delete option: " + opt.text);
     delBtn.addEventListener("click", () => {
       const i = editingOptions.indexOf(opt);
@@ -2113,7 +2395,9 @@
     li.appendChild(handle);
     li.appendChild(swatchWrap);
     li.appendChild(input);
-    li.appendChild(tierControl);
+    li.appendChild(visBtn);
+    li.appendChild(effectWrap);
+    li.appendChild(sizeWrap);
     li.appendChild(delBtn);
     return li;
   }
@@ -2131,14 +2415,32 @@
     if (editingOptions.length === 0) {
       optionsListEl.appendChild(createEmptyRow("No options yet — add one below."));
     }
+    updateSaveButtonState();
+  }
+
+  // Order-sensitive, ignores option ids (only text/tier/color/visible/weight
+  // matter for "is there anything to save"). Used to grey out Save Changes
+  // when the working copy exactly matches what's already persisted.
+  function serializeOptionsForDiff(list) {
+    return JSON.stringify(list.map(o => ({
+      text: o.text,
+      prizeTier: o.prizeTier || "happy",
+      color: o.color || null,
+      visible: o.visible !== false,
+      weight: o.weight || 1
+    })));
+  }
+
+  function updateSaveButtonState() {
+    saveBtn.disabled = serializeOptionsForDiff(editingOptions) === savedOptionsSnapshot;
   }
 
   function closeAllColorPickers() {
     document.querySelectorAll(".color-picker").forEach(p => { p.hidden = true; });
-    document.querySelectorAll('.swatch[aria-expanded="true"]').forEach(s => s.setAttribute("aria-expanded", "false"));
+    document.querySelectorAll('[aria-expanded="true"]').forEach(el => el.setAttribute("aria-expanded", "false"));
   }
 
-  // Clicking anywhere outside an open color picker closes it.
+  // Clicking anywhere outside an open color/effect/size popover closes it.
   document.addEventListener("click", closeAllColorPickers);
 
   function addOption() {
@@ -2149,7 +2451,7 @@
       return;
     }
     formError.textContent = "";
-    editingOptions.push({ id: makeId(), text: value, prizeTier: "happy", color: null });
+    editingOptions.push({ id: makeId(), text: value, prizeTier: "happy", color: null, visible: true, weight: 1 });
     newOptionInput.value = "";
     renderEditorList();
     newOptionInput.focus();
@@ -2164,17 +2466,25 @@
   });
 
   function saveEditor() {
-    // Validation: no blanks, at least 2 options.
+    // Validation: no blanks, at least 2 visible options (hidden options don't
+    // count toward the spin-ability minimum).
     const cleaned = editingOptions
-      .map(o => ({ id: o.id, text: o.text.trim(), prizeTier: o.prizeTier || "happy", color: o.color }))
+      .map(o => ({
+        id: o.id,
+        text: o.text.trim(),
+        prizeTier: o.prizeTier || "happy",
+        color: o.color,
+        visible: o.visible !== false,
+        weight: WEIGHT_STEPS.includes(o.weight) ? o.weight : 1
+      }))
       .filter(o => o.text.length > 0);
 
     if (cleaned.length !== editingOptions.length) {
       formError.textContent = "Blank options are not allowed. Remove or fill them in.";
       return;
     }
-    if (cleaned.length < 2) {
-      formError.textContent = "At least 2 options are required to spin.";
+    if (cleaned.filter(o => o.visible).length < 2) {
+      formError.textContent = "At least 2 visible options are required to spin.";
       return;
     }
 
@@ -2182,14 +2492,15 @@
     options = cleaned;
     saveOptions(options);
     resetWheelDisplay();
-    editingOptions = options.slice(); // keep the tab's working copy in sync post-save
+    editingOptions = cloneOptionsList(options); // keep the tab's working copy in sync post-save
+    savedOptionsSnapshot = serializeOptionsForDiff(options);
     renderEditorList();
   }
 
   saveBtn.addEventListener("click", saveEditor);
 
   function cancelEditing() {
-    editingOptions = options.slice();
+    editingOptions = cloneOptionsList(options);
     formError.textContent = "";
     renderEditorList();
   }
@@ -2404,7 +2715,8 @@
   const tabPanels = {
     wheel: document.getElementById("tabPanelWheel"),
     logs: document.getElementById("tabPanelLogs"),
-    stats: document.getElementById("tabPanelStats")
+    stats: document.getElementById("tabPanelStats"),
+    config: document.getElementById("tabPanelConfig")
   };
 
   let lastFocusedElementSettings = null;
@@ -2425,7 +2737,8 @@
   });
 
   function openSettings() {
-    editingOptions = options.slice();
+    editingOptions = cloneOptionsList(options);
+    savedOptionsSnapshot = serializeOptionsForDiff(options);
     formError.textContent = "";
     newOptionInput.value = "";
     renderEditorList();
@@ -2478,6 +2791,22 @@
     } else {
       resetSecondsInput.value = String(resultDisplaySeconds); // revert invalid input
     }
+  });
+
+  // Changing the PIN from the Config tab closes Settings first (modal
+  // overlays share a z-index, so two open at once would fight for the top
+  // layer) and reopens it back on the Config tab afterward either way,
+  // whether the staff member updates the PIN or cancels out.
+  const changePinBtn = document.getElementById("changePinBtn");
+  changePinBtn.addEventListener("click", () => {
+    closeSettings();
+    const returnToConfigTab = () => {
+      openSettings();
+      setActiveSettingsTab("config");
+    };
+    pendingUnlockAction = returnToConfigTab;
+    pinCreateCancelAction = returnToConfigTab;
+    openPinCreate();
   });
 
   closeSettingsBtn.addEventListener("click", closeSettings);
