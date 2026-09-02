@@ -1,0 +1,1333 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>Get Brian's Money</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@400;500;600;700&display=swap" />
+<style>
+:root{
+  --ink:#07120B;
+  --turf-deep:#0C2015;
+  --turf:#14361F;
+  --panel:#0F2416;
+  --panel-2:#17331F;
+  --edge:#25482F;
+  --chalk:#EAF1E6;
+  --muted:#8FA694;
+  --cash:#F5B942;
+  --cash-dim:#8A6520;
+  --flag:#E5484D;
+  --good:#5FD08A;
+  --display:"Bebas Neue","Barlow Condensed",Impact,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  --cond:"Barlow Condensed","Barlow",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  background:var(--ink);
+  color:var(--chalk);
+  font-family:var(--body);
+  -webkit-font-smoothing:antialiased;
+  overflow:hidden;
+  overscroll-behavior:none;
+  touch-action:none;
+}
+button{font-family:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--cash);outline-offset:2px}
+
+/* ---------- stage ---------- */
+#stage{
+  position:relative;
+  width:100%;height:100%;
+  max-width:min(100vw, 56vh);
+  margin:0 auto;
+  background:var(--turf-deep);
+  overflow:hidden;
+  box-shadow:0 0 80px rgba(0,0,0,.7);
+}
+#game{display:block;width:100%;height:100%;touch-action:none}
+
+/* ---------- score bug ---------- */
+#bug{
+  position:absolute;left:0;right:0;top:0;
+  padding:calc(env(safe-area-inset-top,0px) + 8px) 10px 8px;
+  display:flex;align-items:stretch;gap:1px;
+  background:linear-gradient(180deg,rgba(7,18,11,.94),rgba(7,18,11,.72) 70%,rgba(7,18,11,0));
+  pointer-events:none;
+  font-family:var(--cond);
+}
+.bug-cell{flex:1;display:flex;flex-direction:column;align-items:center;gap:1px}
+.bug-cell.wide{flex:1.5}
+.bug-k{
+  font-size:9px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);font-weight:600;
+}
+.bug-v{
+  font-family:var(--display);font-size:26px;line-height:.92;
+  font-variant-numeric:tabular-nums;color:var(--chalk);
+}
+.bug-v.cash{color:var(--cash)}
+.bug-v.combo-hot{color:var(--cash);text-shadow:0 0 14px rgba(245,185,66,.55)}
+#bug-target{
+  position:absolute;left:0;right:0;
+  top:calc(env(safe-area-inset-top,0px) + 56px);
+  text-align:center;font-family:var(--cond);
+  font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);
+  pointer-events:none;
+}
+
+/* ---------- tackle button ---------- */
+#tackle{
+  position:absolute;
+  right:calc(env(safe-area-inset-right,0px) + 18px);
+  bottom:calc(env(safe-area-inset-bottom,0px) + 26px);
+  width:104px;height:104px;border-radius:50%;
+  border:2px solid var(--cash);
+  background:radial-gradient(circle at 50% 38%,rgba(245,185,66,.30),rgba(245,185,66,.10) 60%,rgba(7,18,11,.55));
+  color:var(--cash);
+  font-family:var(--display);font-size:27px;letter-spacing:.06em;
+  display:none;place-items:center;
+  touch-action:none;-webkit-tap-highlight-color:transparent;
+  text-shadow:0 1px 0 rgba(0,0,0,.5);
+}
+#tackle.armed{display:grid}
+#tackle:active,#tackle.hit{background:radial-gradient(circle at 50% 38%,rgba(245,185,66,.72),rgba(245,185,66,.28) 60%,rgba(7,18,11,.4));color:#07120B}
+#tackle[disabled]{opacity:.34;border-color:var(--muted);color:var(--muted)}
+
+/* ---------- overlays ---------- */
+.screen{
+  position:absolute;inset:0;z-index:10;
+  display:none;flex-direction:column;
+  padding:calc(env(safe-area-inset-top,0px) + 20px) 20px calc(env(safe-area-inset-bottom,0px) + 20px);
+  background:linear-gradient(175deg,rgba(7,18,11,.94),rgba(12,32,21,.97));
+  backdrop-filter:blur(3px);
+  overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+  touch-action:pan-y;
+}
+.screen.on{display:flex}
+.screen-in{margin:auto 0;width:100%}
+
+.eyebrow{
+  font-family:var(--cond);font-size:10px;font-weight:600;
+  letter-spacing:.26em;text-transform:uppercase;color:var(--cash);
+  margin-bottom:6px;
+}
+h1{
+  font-family:var(--display);font-weight:400;
+  font-size:clamp(46px,15vw,74px);line-height:.84;
+  margin:0 0 4px;letter-spacing:.01em;text-wrap:balance;
+}
+h1 .em{color:var(--cash);display:block}
+h2{
+  font-family:var(--display);font-weight:400;
+  font-size:clamp(30px,9vw,42px);line-height:.9;margin:0 0 10px;text-wrap:balance;
+}
+.lede{font-size:14.5px;line-height:1.5;color:var(--muted);margin:0 0 20px;max-width:38ch}
+.lede strong{color:var(--chalk);font-weight:600}
+
+/* rule list */
+.rules{
+  display:flex;flex-direction:column;gap:9px;
+  margin:0 0 22px;padding:14px 0 0;
+  border-top:1px solid var(--edge);
+}
+.rule{display:flex;gap:11px;align-items:baseline;font-size:13.5px;line-height:1.42}
+.rule-k{
+  font-family:var(--cond);font-size:10px;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--cash);
+  flex:0 0 62px;
+}
+.rule-t{color:var(--muted)}
+.rule-t b{color:var(--chalk);font-weight:600}
+
+/* buttons */
+.btn{
+  display:block;width:100%;padding:15px 18px;
+  font-family:var(--display);font-size:25px;letter-spacing:.04em;
+  background:var(--cash);color:#07120B;
+  border:none;border-radius:2px;cursor:pointer;
+  transition:filter .12s ease;
+}
+.btn:hover{filter:brightness(1.09)}
+.btn:disabled{background:var(--panel-2);color:var(--muted);cursor:not-allowed}
+.btn.ghost{
+  background:transparent;color:var(--chalk);
+  border:1px solid var(--edge);font-size:19px;padding:12px 18px;
+}
+.btn.ghost:hover{border-color:var(--cash);color:var(--cash);filter:none}
+.btn-row{display:flex;flex-direction:column;gap:9px;margin-top:14px}
+
+/* roster grid */
+.roster{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:8px}
+.who{
+  display:flex;flex-direction:column;gap:2px;align-items:flex-start;
+  padding:11px 12px;text-align:left;
+  background:var(--panel);border:1px solid var(--edge);border-radius:2px;
+  cursor:pointer;transition:border-color .12s ease,background .12s ease;
+}
+.who:hover{border-color:var(--cash);background:var(--panel-2)}
+.who-n{font-family:var(--cond);font-size:16px;font-weight:600;line-height:1.05}
+.who-used{font-size:9.5px;font-family:var(--cond);letter-spacing:.1em;text-transform:uppercase;color:var(--cash-dim)}
+.who.spent{opacity:.5}
+.who.spent .who-used{color:var(--flag)}
+
+/* summary */
+.total{
+  font-family:var(--display);font-size:clamp(62px,21vw,104px);line-height:.82;
+  color:var(--cash);font-variant-numeric:tabular-nums;margin:2px 0 2px;
+}
+.statline{
+  display:flex;gap:0;border-top:1px solid var(--edge);border-bottom:1px solid var(--edge);
+  margin:16px 0 18px;font-family:var(--cond);
+}
+.stat{flex:1;padding:11px 4px;text-align:center;border-right:1px solid var(--edge)}
+.stat:last-child{border-right:none}
+.stat-v{font-family:var(--display);font-size:29px;line-height:.9;font-variant-numeric:tabular-nums}
+.stat-k{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-top:3px}
+
+.codebox{
+  border:1px dashed var(--cash-dim);background:rgba(245,185,66,.05);
+  padding:13px;border-radius:2px;margin-bottom:10px;
+}
+.codebox-k{
+  font-family:var(--cond);font-size:9.5px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--cash);font-weight:600;margin-bottom:6px;
+}
+#code-out{
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:11.5px;line-height:1.45;color:var(--chalk);
+  word-break:break-all;user-select:all;
+}
+.note{font-size:12px;line-height:1.5;color:var(--muted);margin:10px 0 0}
+.note b{color:var(--chalk);font-weight:600}
+
+/* commissioner */
+.field-k{
+  font-family:var(--cond);font-size:10px;font-weight:600;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px;
+}
+textarea{
+  width:100%;min-height:104px;resize:vertical;
+  background:var(--panel);color:var(--chalk);
+  border:1px solid var(--edge);border-radius:2px;padding:11px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:12px;line-height:1.5;touch-action:auto;
+}
+textarea:focus{border-color:var(--cash);outline:none}
+
+.board{margin-top:20px;border-top:1px solid var(--edge)}
+.pick{
+  display:grid;grid-template-columns:34px 1fr auto;
+  gap:10px;align-items:center;
+  padding:9px 2px;border-bottom:1px solid rgba(37,72,47,.6);
+}
+.pick-n{
+  font-family:var(--display);font-size:25px;line-height:.9;
+  color:var(--cash);text-align:right;font-variant-numeric:tabular-nums;
+}
+.pick.empty .pick-n{color:var(--edge)}
+.pick-name{font-family:var(--cond);font-size:16.5px;font-weight:600;line-height:1.12}
+.pick-sub{font-size:10.5px;color:var(--muted);line-height:1.3;word-break:break-all}
+.pick-score{
+  font-family:var(--display);font-size:22px;line-height:.9;
+  font-variant-numeric:tabular-nums;text-align:right;
+}
+.pick.empty .pick-score{color:var(--edge);font-size:15px}
+.warn{
+  display:inline-block;font-family:var(--cond);font-size:9.5px;font-weight:600;
+  letter-spacing:.1em;text-transform:uppercase;
+  color:var(--flag);border:1px solid var(--flag);
+  border-radius:2px;padding:1px 5px;margin-top:3px;
+}
+.errline{
+  font-size:11.5px;color:var(--flag);font-family:ui-monospace,Menlo,monospace;
+  padding:4px 0;line-height:1.4;word-break:break-all;
+}
+
+.toast{
+  position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 22px);
+  transform:translateX(-50%);z-index:40;
+  background:var(--cash);color:#07120B;
+  font-family:var(--cond);font-weight:700;font-size:13px;
+  letter-spacing:.08em;text-transform:uppercase;
+  padding:9px 18px;border-radius:2px;
+  opacity:0;pointer-events:none;transition:opacity .2s ease;
+}
+.toast.on{opacity:1}
+
+@media (prefers-reduced-motion: reduce){
+  *{transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="game"></canvas>
+
+  <div id="bug" aria-hidden="true">
+    <div class="bug-cell wide"><span class="bug-k">Cash</span><span class="bug-v cash" id="bug-score">0</span></div>
+    <div class="bug-cell"><span class="bug-k">Stops</span><span class="bug-v" id="bug-tackles">0</span></div>
+    <div class="bug-cell"><span class="bug-k">Combo</span><span class="bug-v" id="bug-combo">1.0×</span></div>
+    <div class="bug-cell"><span class="bug-k">Play</span><span class="bug-v" id="bug-level">1</span></div>
+  </div>
+  <div id="bug-target"></div>
+
+  <button id="tackle" aria-label="Dive to tackle">DIVE</button>
+
+  <!-- HOME -->
+  <section class="screen on" id="screen-home">
+    <div class="screen-in">
+      <p class="eyebrow">Fantasy 2026 · Draft Order</p>
+      <h1>Get<span class="em">Brian's Money</span></h1>
+      <p class="lede">Brian is running off with the prize pool. You have <strong>three attempts</strong> to chase him down. High score drafts first.</p>
+      <div class="rules">
+        <div class="rule"><span class="rule-k">Steer</span><span class="rule-t">Drag anywhere. Your defender runs at your finger.</span></div>
+        <div class="rule"><span class="rule-k">Tackle</span><span class="rule-t">Hit <b>DIVE</b> to lunge. Touching him does nothing — he'll stiff-arm you.</span></div>
+        <div class="rule"><span class="rule-k">Catch</span><span class="rule-t">Brian is <b>faster than you</b>. Cut off his angle, don't chase his back.</span></div>
+        <div class="rule"><span class="rule-k">Cash</span><span class="rule-t">Stop him deep, hit him hard, string stops together. He reaches the end zone, you're done.</span></div>
+      </div>
+      <button class="btn" id="go-roster">Start Chasing</button>
+      <div class="btn-row">
+        <button class="btn ghost" id="go-commish">Commissioner Board</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ROSTER -->
+  <section class="screen" id="screen-roster">
+    <div class="screen-in">
+      <p class="eyebrow">Step 1 of 2</p>
+      <h2>Who are you?</h2>
+      <p class="lede">Pick your name. Attempts are tracked on this phone — three per manager.</p>
+      <div class="roster" id="roster"></div>
+      <div class="btn-row"><button class="btn ghost" id="roster-back">Back</button></div>
+    </div>
+  </section>
+
+  <!-- BRIEF -->
+  <section class="screen" id="screen-brief">
+    <div class="screen-in">
+      <p class="eyebrow" id="brief-eyebrow">Attempt 1 of 3</p>
+      <h2 id="brief-title">Get Brian's money.</h2>
+      <p class="lede" id="brief-lede"></p>
+      <div class="rules" id="brief-rules">
+        <div class="rule"><span class="rule-k">Steer</span><span class="rule-t">Drag anywhere on the field.</span></div>
+        <div class="rule"><span class="rule-k">Dive</span><span class="rule-t">Amber button, bottom right. Miss and you're on the ground.</span></div>
+      </div>
+      <button class="btn" id="brief-go">Kick Off</button>
+      <div class="btn-row"><button class="btn ghost" id="brief-back">Pick a different name</button></div>
+    </div>
+  </section>
+
+  <!-- SUMMARY -->
+  <section class="screen" id="screen-summary">
+    <div class="screen-in">
+      <p class="eyebrow" id="sum-eyebrow">Run complete</p>
+      <h2 id="sum-title">He's gone.</h2>
+      <div class="total" id="sum-total">0</div>
+      <p class="lede" id="sum-sub"></p>
+      <div class="statline">
+        <div class="stat"><div class="stat-v" id="sum-tackles">0</div><div class="stat-k">Stops</div></div>
+        <div class="stat"><div class="stat-v" id="sum-whiffs">0</div><div class="stat-k">Whiffs</div></div>
+        <div class="stat"><div class="stat-v" id="sum-best">0</div><div class="stat-k">Best Hit</div></div>
+        <div class="stat"><div class="stat-v" id="sum-time">0:00</div><div class="stat-k">Clock</div></div>
+      </div>
+      <div class="codebox">
+        <div class="codebox-k">Your score code — paste this in the group chat</div>
+        <div id="code-out">—</div>
+      </div>
+      <button class="btn" id="copy-code">Copy Code</button>
+      <div class="btn-row">
+        <button class="btn ghost" id="again">Next Attempt</button>
+        <button class="btn ghost" id="sum-commish">Commissioner Board</button>
+      </div>
+      <p class="note" id="sum-note"></p>
+    </div>
+  </section>
+
+  <!-- COMMISSIONER -->
+  <section class="screen" id="screen-commish">
+    <div class="screen-in">
+      <p class="eyebrow">Fantasy 2026 · Commissioner</p>
+      <h2>Draft Board</h2>
+      <p class="lede">Paste every score code from the group chat — one per line, any order. Best run per manager counts.</p>
+      <label class="field-k" for="codes-in">Score codes</label>
+      <textarea id="codes-in" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="GBM1Mnwx...&#10;GBM1NHw5..."></textarea>
+      <div class="btn-row">
+        <button class="btn" id="build-board">Build Draft Order</button>
+        <button class="btn ghost" id="copy-board">Copy Board For Chat</button>
+        <button class="btn ghost" id="commish-back">Back</button>
+      </div>
+      <div id="errors"></div>
+      <div class="board" id="board"></div>
+    </div>
+  </section>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   ROSTER — Fantasy 2026
+   ============================================================ */
+var ROSTER = [
+  {n:"Azim"},
+  {n:"Harry W"},
+  {n:"Kevin K"},
+  {n:"Perry C"},
+  {n:"Sam S"},
+  {n:"Brian Wolf"},
+  {n:"Nate M"},
+  {n:"Peter S"},
+  {n:"Brian Roy"},
+  {n:"John Burket"},
+  {n:"Brian Bosch"},
+  {n:"Will Yeingst"}
+];
+var BRIAN_ROY = 8;                 // the Brian whose money it is
+var OTHER_BRIANS = [5, 10];        // Wolf, Bosch
+var MAX_ATTEMPTS = 3;
+
+/* ============================================================
+   SCORE CODES — tamper-evident, offline
+   ============================================================ */
+var CODE_PREFIX = "GBM1";
+var SALT = "brians-money-2026";
+var MAX_PER_STOP = 12600;
+
+function fnv(s){
+  var h = 0x811c9dc5 >>> 0;
+  for (var i=0;i<s.length;i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h >>> 0;
+}
+function sumOf(payload){
+  var s = fnv(payload + SALT).toString(36);
+  return s.slice(-5).padStart(5, "0");
+}
+function b64url(s){ return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""); }
+function unb64url(s){
+  s = s.replace(/-/g,"+").replace(/_/g,"/");
+  while (s.length % 4) s += "=";
+  return atob(s);
+}
+function makeCode(r){
+  var payload = [1, r.playerIdx, r.score, r.seed, r.tackles, r.whiffs, Math.round(r.durationMs/1000), r.level].join("|");
+  return CODE_PREFIX + b64url(payload) + "." + sumOf(payload);
+}
+function parseCode(raw){
+  var s = (raw||"").trim();
+  if (!s) return null;
+  if (s.indexOf(CODE_PREFIX) !== 0) return {ok:false, raw:s, error:"Not a Get Brian's Money code"};
+  var body = s.slice(CODE_PREFIX.length);
+  var dot = body.lastIndexOf(".");
+  if (dot < 0) return {ok:false, raw:s, error:"Missing checksum"};
+  var data = body.slice(0, dot), sum = body.slice(dot+1);
+  var payload;
+  try { payload = unb64url(data); } catch(e){ return {ok:false, raw:s, error:"Code is damaged"}; }
+  if (sumOf(payload) !== sum) return {ok:false, raw:s, error:"Checksum failed — this code was edited"};
+  var p = payload.split("|");
+  if (p.length !== 8 || p[0] !== "1") return {ok:false, raw:s, error:"Unrecognized code version"};
+  var run = {
+    playerIdx:+p[1], score:+p[2], seed:+p[3],
+    tackles:+p[4], whiffs:+p[5], durationS:+p[6], level:+p[7]
+  };
+  for (var k in run){ if (!isFinite(run[k])) return {ok:false, raw:s, error:"Code is damaged"}; }
+  if (!(run.playerIdx >= 0 && run.playerIdx < ROSTER.length)) return {ok:false, raw:s, error:"Unknown manager"};
+
+  var flags = [];
+  if (run.score < 0 || run.tackles < 0 || run.whiffs < 0) flags.push("Negative values");
+  if (run.score > run.tackles * MAX_PER_STOP + 1) flags.push("Score too high for " + run.tackles + " stop" + (run.tackles===1?"":"s"));
+  if (run.durationS < run.tackles * 2) flags.push("Too fast for " + run.tackles + " stops");
+  if (run.durationS > 3600) flags.push("Implausible run length");
+  return {ok:true, raw:s, run:run, flags:flags};
+}
+
+/* ============================================================
+   STORAGE — attempts, per manager, on this device
+   ============================================================ */
+function lsGet(k, fb){
+  try { var v = localStorage.getItem(k); return v == null ? fb : JSON.parse(v); }
+  catch(e){ return fb; }
+}
+function lsSet(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+function attemptsFor(idx){ var a = lsGet("gbm.attempts." + idx, []); return Array.isArray(a) ? a : []; }
+function pushAttempt(idx, rec){
+  var a = attemptsFor(idx); a.push(rec); lsSet("gbm.attempts." + idx, a); return a;
+}
+
+/* ============================================================
+   RNG — seeded so every run is replayable & verifiable
+   ============================================================ */
+function mulberry32(a){
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    var t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+/* ============================================================
+   FIELD CONSTANTS (yards / seconds)
+   ============================================================ */
+var FIELD_W = 30;     // playable width, sideline to sideline
+var VIS_W   = 22;     // how much of that width fits on screen
+var GOAL_Y  = 45;     // Brian escapes at this line
+var START_Y = 0;      // Brian's snap point
+var DEF_Y   = 12;     // you start downfield of him
+
+var PLAYER_SPEED = 8.35;
+var PLAYER_ACCEL = 34;
+var DIVE_TIME    = 0.28;
+var DIVE_BOOST   = 1.9;
+var DIVE_REACH   = 2.0;
+var PRONE_TIME   = 0.62;
+var STIFF_DIST   = 1.05;
+
+/* ============================================================
+   ELEMENTS
+   ============================================================ */
+var $ = function(id){ return document.getElementById(id); };
+var stage = $("stage"), cv = $("game"), ctx = cv.getContext("2d");
+var elScore = $("bug-score"), elTackles = $("bug-tackles"),
+    elCombo = $("bug-combo"), elLevel = $("bug-level"), elTarget = $("bug-target");
+var btnTackle = $("tackle"), toastEl = $("toast");
+
+var W = 0, H = 0, DPR = 1, PX = 1;  // PX = pixels per yard
+
+function resize(){
+  var r = stage.getBoundingClientRect();
+  W = Math.max(1, Math.round(r.width));
+  H = Math.max(1, Math.round(r.height));
+  DPR = Math.min(window.devicePixelRatio || 1, 2.5);
+  cv.width = Math.round(W * DPR);
+  cv.height = Math.round(H * DPR);
+  cv.style.width = W + "px";
+  cv.style.height = H + "px";
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  PX = W / VIS_W;
+}
+window.addEventListener("resize", resize);
+window.addEventListener("orientationchange", function(){ setTimeout(resize, 120); });
+resize();
+
+function toast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add("on");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(function(){ toastEl.classList.remove("on"); }, 1500);
+}
+
+/* ============================================================
+   GAME STATE
+   ============================================================ */
+var G = {
+  mode: "attract",        // attract | live | over
+  playerIdx: -1,
+  targetName: "Brian",
+  isPaige: false,
+  exhibition: false,
+  seed: 0, rnd: Math.random,
+  score: 0, tackles: 0, whiffs: 0, level: 1,
+  combo: 1, comboCount: 0, bestHit: 0,
+  startedAt: 0, durationMs: 0,
+  camY: 0, camXv: FIELD_W/2,
+  you: null, brian: null, blockers: [], bits: [], flashes: []
+};
+
+function newActor(x, y){
+  return {x:x, y:y, vx:0, vy:0, hx:0, hy:1, diving:false, diveT:0, prone:0, stun:0, cool:0};
+}
+
+function startRun(playerIdx, exhibition){
+  G.playerIdx = playerIdx;
+  G.exhibition = !!exhibition;
+  G.isPaige = (playerIdx === BRIAN_ROY);
+  G.targetName = G.isPaige ? "Paige" : "Brian";
+  G.seed = (Date.now() ^ Math.floor(Math.random()*0x7fffffff)) >>> 0;
+  G.rnd = mulberry32(G.seed);
+  G.score = 0; G.tackles = 0; G.whiffs = 0; G.level = 1;
+  G.combo = 1; G.comboCount = 0; G.bestHit = 0;
+  G.bits = []; G.flashes = [];
+  G.startedAt = performance.now();
+  setupPlay();
+  G.mode = "live";
+  btnTackle.classList.add("armed");
+  elTarget.textContent = G.targetName + " has the bag";
+  syncBug();
+}
+
+function setupPlay(){
+  var bx = 6 + G.rnd() * (FIELD_W - 12);
+  var px = 6 + G.rnd() * (FIELD_W - 12);
+  G.brian = newActor(bx, START_Y);
+  G.you   = newActor(px, DEF_Y);
+  G.brian.jukeT = 0.5 + G.rnd() * 0.5;
+  G.brian.jukeDir = 0;
+  G.camY = (G.brian.y + G.you.y) / 2;
+  G.camXv = clampCam((G.brian.x + G.you.x) / 2);
+
+  // Blockers arrive as the level climbs — other managers, running interference.
+  G.blockers = [];
+  var count = Math.max(0, Math.min(G.level - 2, 4));
+  var pool = [];
+  for (var i=0;i<ROSTER.length;i++){
+    if (i !== G.playerIdx && i !== BRIAN_ROY) pool.push(i);
+  }
+  for (var b=0;b<count;b++){
+    var pick = pool.splice(Math.floor(G.rnd() * pool.length), 1)[0];
+    var bl = newActor(4 + G.rnd() * (FIELD_W - 8), START_Y + 3 + G.rnd() * 8);
+    bl.who = pick == null ? 0 : pick;
+    G.blockers.push(bl);
+  }
+}
+
+function clampCam(x){
+  var half = VIS_W / 2;
+  if (FIELD_W <= VIS_W) return FIELD_W / 2;
+  return Math.max(half, Math.min(FIELD_W - half, x));
+}
+
+function targetSpeed(){ return 8.6 + (G.level - 1) * 0.20 + (G.isPaige ? 0.5 : 0); }
+
+/* ---------- steering helper ---------- */
+function steer(a, dx, dy, maxSpeed, accel, dt){
+  var m = Math.hypot(dx, dy);
+  if (m > 0.0001){ dx /= m; dy /= m; } else { dx = 0; dy = 0; }
+  var wantX = dx * maxSpeed, wantY = dy * maxSpeed;
+  var sx = wantX - a.vx, sy = wantY - a.vy;
+  var sm = Math.hypot(sx, sy), lim = accel * dt;
+  if (sm > lim && sm > 0){ sx = sx / sm * lim; sy = sy / sm * lim; }
+  a.vx += sx; a.vy += sy;
+  var vm = Math.hypot(a.vx, a.vy);
+  if (vm > 0.05){ a.hx = a.vx / vm; a.hy = a.vy / vm; }
+}
+
+/* ============================================================
+   INPUT — drag to steer, button to dive
+   ============================================================ */
+var touchPt = null, touchId = null;
+
+function stagePoint(e){
+  var r = cv.getBoundingClientRect();
+  return {x: e.clientX - r.left, y: e.clientY - r.top};
+}
+cv.addEventListener("pointerdown", function(e){
+  if (G.mode !== "live") return;
+  if (touchId !== null) return;
+  touchId = e.pointerId;
+  touchPt = stagePoint(e);
+  cv.setPointerCapture(e.pointerId);
+  e.preventDefault();
+}, {passive:false});
+cv.addEventListener("pointermove", function(e){
+  if (e.pointerId !== touchId) return;
+  touchPt = stagePoint(e);
+  e.preventDefault();
+}, {passive:false});
+function endPointer(e){
+  if (e.pointerId !== touchId) return;
+  touchId = null; touchPt = null;
+}
+cv.addEventListener("pointerup", endPointer);
+cv.addEventListener("pointercancel", endPointer);
+
+function tryDive(){
+  if (G.mode !== "live") return;
+  var y = G.you;
+  if (y.diving || y.prone > 0 || y.stun > 0 || y.cool > 0) return;
+  y.diving = true; y.diveT = DIVE_TIME;
+  y.dx = y.hx; y.dy = y.hy;
+  y.hit = false;
+  btnTackle.classList.add("hit");
+  setTimeout(function(){ btnTackle.classList.remove("hit"); }, 140);
+}
+btnTackle.addEventListener("pointerdown", function(e){ e.preventDefault(); tryDive(); }, {passive:false});
+window.addEventListener("keydown", function(e){
+  if (e.code === "Space"){ e.preventDefault(); tryDive(); }
+});
+// Keyboard steering, for anyone playing at a desk.
+var keys = {};
+window.addEventListener("keydown", function(e){ keys[e.key.toLowerCase()] = true; });
+window.addEventListener("keyup",   function(e){ keys[e.key.toLowerCase()] = false; });
+
+/* ============================================================
+   SIM
+   ============================================================ */
+function flash(text, color){
+  G.flashes.push({t:0, text:text, color:color || "#EAF1E6"});
+}
+function burstCash(x, y, n){
+  for (var i=0;i<n;i++){
+    var a = Math.random() * Math.PI * 2, s = 2 + Math.random() * 7;
+    G.bits.push({x:x, y:y, vx:Math.cos(a)*s, vy:Math.sin(a)*s - 2, t:0, life:0.9 + Math.random()*0.5, r:Math.random()*Math.PI});
+  }
+}
+
+function update(dt){
+  if (G.mode !== "live") return;
+  var you = G.you, br = G.brian;
+
+  /* --- your input --- */
+  var ix = 0, iy = 0;
+  if (touchPt){
+    var ys = toScreen(you.x, you.y);
+    ix = touchPt.x - ys.x; iy = -(touchPt.y - ys.y);
+    if (Math.hypot(ix, iy) < 10){ ix = 0; iy = 0; }
+  }
+  if (keys.arrowleft || keys.a) ix -= 1;
+  if (keys.arrowright|| keys.d) ix += 1;
+  if (keys.arrowup   || keys.w) iy += 1;
+  if (keys.arrowdown || keys.s) iy -= 1;
+
+  /* --- you: dive / prone / steer --- */
+  if (you.prone > 0){
+    you.prone -= dt;
+    you.vx *= 0.86; you.vy *= 0.86;
+  } else if (you.diving){
+    you.diveT -= dt;
+    you.vx = you.dx * PLAYER_SPEED * DIVE_BOOST;
+    you.vy = you.dy * PLAYER_SPEED * DIVE_BOOST;
+    if (!you.hit && Math.hypot(br.x - you.x, br.y - you.y) < DIVE_REACH){
+      you.hit = true; you.diving = false; you.diveT = 0;
+      onTackle();
+      return;
+    }
+    if (you.diveT <= 0){
+      you.diving = false;
+      you.prone = PRONE_TIME;
+      G.whiffs++;
+      G.comboCount = 0; G.combo = 1;
+      flash("WHIFF", "#E5484D");
+      syncBug();
+    }
+  } else {
+    if (you.stun > 0){ you.stun -= dt; steer(you, 0, 0, 0, PLAYER_ACCEL, dt); }
+    else steer(you, ix, iy, PLAYER_SPEED, PLAYER_ACCEL, dt);
+    if (you.cool > 0) you.cool -= dt;
+  }
+  you.x += you.vx * dt; you.y += you.vy * dt;
+  you.x = Math.max(0.6, Math.min(FIELD_W - 0.6, you.x));
+
+  /* --- Brian: run for the money --- */
+  var tx = 0, ty = 1;                                   // downfield
+  var dx = br.x - you.x, dy = br.y - you.y;
+  var d  = Math.max(0.6, Math.hypot(dx, dy));
+  var threat = you.prone > 0 ? 0.25 : 1;                // relax once you're on the ground
+  var avoid = Math.min(3.2, 9 / (d * d)) * threat;
+  tx += (dx / d) * avoid;
+  ty += (dy / d) * avoid * 0.35;
+
+  br.jukeT -= dt;
+  if (br.jukeT <= 0){
+    br.jukeDir = (G.rnd() < 0.5 ? -1 : 1) * (0.6 + G.rnd() * 0.9);
+    br.jukeT = Math.max(0.32, 1.05 - G.level * 0.05) + G.rnd() * 0.45;
+    br.jukeHold = 0.34;
+  }
+  if (br.jukeHold > 0){ br.jukeHold -= dt; tx += br.jukeDir * 1.5; }
+
+  if (br.x < 4) tx += (4 - br.x) * 0.9;
+  if (br.x > FIELD_W - 4) tx -= (br.x - (FIELD_W - 4)) * 0.9;
+
+  var brSpeed = targetSpeed() * (br.jukeHold > 0 ? 0.90 : 1) * (br.boost > 0 ? 1.18 : 1);
+  if (br.boost > 0) br.boost -= dt;
+  steer(br, tx, ty, brSpeed, 20, dt);
+  br.x += br.vx * dt; br.y += br.vy * dt;
+  br.x = Math.max(0.6, Math.min(FIELD_W - 0.6, br.x));
+
+  /* --- stiff arm: contact without a dive does nothing but cost you --- */
+  if (!you.diving && you.prone <= 0 && Math.hypot(dx, dy) < STIFF_DIST){
+    br.boost = 0.45;
+    you.vx *= 0.35; you.vy *= 0.35;
+    you.cool = 0.28;
+    if (!you.stiffed){ flash("STIFF ARM", "#E5484D"); you.stiffed = 0.6; }
+  }
+  if (you.stiffed > 0) you.stiffed -= dt;
+
+  /* --- blockers --- */
+  for (var i=0;i<G.blockers.length;i++){
+    var bl = G.blockers[i];
+    if (bl.cool > 0){
+      bl.cool -= dt;
+      steer(bl, 0, 1, 4, 14, dt);
+    } else {
+      steer(bl, you.x - bl.x, you.y - bl.y, 7.2, 15, dt);
+      if (Math.hypot(you.x - bl.x, you.y - bl.y) < 1.15 && you.prone <= 0 && you.stun <= 0){
+        you.stun = 0.55; you.vx *= 0.2; you.vy *= 0.2;
+        bl.cool = 2.4;
+        flash("BLOCKED — " + ROSTER[bl.who].n.toUpperCase(), "#E5484D");
+      }
+    }
+    bl.x += bl.vx * dt; bl.y += bl.vy * dt;
+    bl.x = Math.max(0.6, Math.min(FIELD_W - 0.6, bl.x));
+  }
+
+  /* --- camera --- */
+  var wantY = (br.y + you.y) / 2 + 4;
+  var wantX = clampCam((br.x + you.x) / 2);
+  var k = Math.min(1, dt * 4.5);
+  G.camY  += (wantY - G.camY) * k;
+  G.camXv += (wantX - G.camXv) * k;
+
+  /* --- particles / flashes --- */
+  for (var p=G.bits.length-1;p>=0;p--){
+    var bit = G.bits[p];
+    bit.t += dt;
+    bit.vy += 14 * dt;
+    bit.x += bit.vx * dt; bit.y += bit.vy * dt;
+    bit.r += dt * 6;
+    if (bit.t > bit.life) G.bits.splice(p, 1);
+  }
+  for (var f=G.flashes.length-1;f>=0;f--){
+    G.flashes[f].t += dt;
+    if (G.flashes[f].t > 1.1) G.flashes.splice(f, 1);
+  }
+
+  /* --- did he get away? --- */
+  if (br.y >= GOAL_Y) endRun();
+}
+
+function onTackle(){
+  var br = G.brian, you = G.you;
+  var closing = Math.hypot(you.vx - br.vx, you.vy - br.vy);
+  var yardsOut = Math.max(0, Math.min(GOAL_Y, GOAL_Y - br.y));
+
+  var base = 1000;
+  var yardBonus = Math.round(yardsOut * 40);
+  var hitBonus = Math.round(Math.min(1, closing / 20) * 1000);
+
+  G.comboCount++;
+  G.combo = Math.min(3, 1 + (G.comboCount - 1) * 0.15);
+
+  var gained = Math.round((base + yardBonus + hitBonus) * G.combo);
+  G.score += gained;
+  G.tackles++;
+  G.level++;
+  if (gained > G.bestHit) G.bestHit = gained;
+
+  burstCash(br.x, br.y, 16);
+  flash("+$" + gained.toLocaleString(), "#F5B942");
+  if (hitBonus > 750) flash("BIG HIT", "#F5B942");
+
+  syncBug();
+  setupPlay();
+}
+
+function endRun(){
+  G.mode = "over";
+  G.durationMs = performance.now() - G.startedAt;
+  btnTackle.classList.remove("armed");
+  touchPt = null; touchId = null;
+  showSummary();
+}
+
+function syncBug(){
+  elScore.textContent = G.score.toLocaleString();
+  elTackles.textContent = G.tackles;
+  elCombo.textContent = G.combo.toFixed(1) + "×";
+  elCombo.className = "bug-v" + (G.combo > 1.01 ? " combo-hot" : "");
+  elLevel.textContent = G.level;
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function toScreen(x, y){
+  return {x: (x - G.camXv) * PX + W/2, y: (G.camY - y) * PX + H/2};
+}
+
+function drawField(){
+  ctx.fillStyle = "#0C2015";
+  ctx.fillRect(0, 0, W, H);
+
+  var left = toScreen(0, 0).x, right = toScreen(FIELD_W, 0).x;
+
+  // mown stripes, five yards each
+  var firstBand = Math.floor((G.camY - (H/2)/PX) / 5) - 1;
+  var lastBand  = Math.ceil((G.camY + (H/2)/PX) / 5) + 1;
+  for (var b=firstBand; b<=lastBand; b++){
+    var y0 = toScreen(0, b*5).y, y1 = toScreen(0, b*5+5).y;
+    ctx.fillStyle = (b % 2 === 0) ? "#14361F" : "#123019";
+    ctx.fillRect(left, Math.min(y0, y1), right-left, Math.abs(y1-y0));
+  }
+
+  // yard lines + hash marks
+  ctx.lineWidth = 1;
+  for (var yl=firstBand*5; yl<=lastBand*5; yl+=5){
+    var sy = toScreen(0, yl).y;
+    if (sy < -20 || sy > H+20) continue;
+    ctx.strokeStyle = "rgba(234,241,230,.20)";
+    ctx.beginPath(); ctx.moveTo(left, sy); ctx.lineTo(right, sy); ctx.stroke();
+
+    ctx.strokeStyle = "rgba(234,241,230,.28)";
+    var hx1 = toScreen(FIELD_W*0.36, 0).x, hx2 = toScreen(FIELD_W*0.64, 0).x;
+    ctx.beginPath();
+    ctx.moveTo(hx1-5, sy); ctx.lineTo(hx1+5, sy);
+    ctx.moveTo(hx2-5, sy); ctx.lineTo(hx2+5, sy);
+    ctx.stroke();
+
+    // yards-to-the-money numerals
+    var toGo = Math.round(GOAL_Y - yl);
+    if (toGo > 0 && toGo <= 45 && toGo % 10 === 0){
+      ctx.save();
+      ctx.fillStyle = "rgba(234,241,230,.16)";
+      ctx.font = "600 " + Math.round(PX*2.1) + "px 'Barlow Condensed', sans-serif";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(String(toGo), left + (right-left)*0.14, sy);
+      ctx.fillText(String(toGo), left + (right-left)*0.86, sy);
+      ctx.restore();
+    }
+  }
+
+  // sidelines
+  ctx.strokeStyle = "rgba(234,241,230,.42)"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(left, 0); ctx.lineTo(left, H);
+  ctx.moveTo(right, 0); ctx.lineTo(right, H); ctx.stroke();
+
+  // the money line
+  var gy = toScreen(0, GOAL_Y).y;
+  if (gy > -60 && gy < H + 60){
+    var grd = ctx.createLinearGradient(0, gy, 0, gy + PX*5);
+    grd.addColorStop(0, "rgba(245,185,66,.22)");
+    grd.addColorStop(1, "rgba(245,185,66,0)");
+    ctx.fillStyle = grd;
+    ctx.fillRect(left, gy, right-left, PX*5);
+    ctx.strokeStyle = "#F5B942"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(left, gy); ctx.lineTo(right, gy); ctx.stroke();
+    ctx.save();
+    ctx.fillStyle = "rgba(245,185,66,.8)";
+    ctx.font = "600 12px 'Barlow Condensed', sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("ESCAPE LINE", W/2, gy + 16);
+    ctx.restore();
+  }
+}
+
+function drawBits(){
+  for (var i=0;i<G.bits.length;i++){
+    var b = G.bits[i], s = toScreen(b.x, b.y);
+    var a = Math.max(0, 1 - b.t / b.life);
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.translate(s.x, s.y);
+    ctx.rotate(b.r);
+    ctx.fillStyle = "#8FD9A0";
+    ctx.fillRect(-PX*0.34, -PX*0.17, PX*0.68, PX*0.34);
+    ctx.fillStyle = "#0C2015";
+    ctx.fillRect(-PX*0.07, -PX*0.07, PX*0.14, PX*0.14);
+    ctx.restore();
+  }
+}
+
+/* --- one figure, seen from just above and behind --- */
+function drawFigure(a, opts){
+  var s = toScreen(a.x, a.y);
+  if (s.x < -80 || s.x > W+80 || s.y < -100 || s.y > H+100) return;
+  var R = PX * 0.95;
+  var ang = Math.atan2(-a.hy, a.hx);
+
+  ctx.save();
+  ctx.translate(s.x, s.y);
+
+  // shadow
+  ctx.fillStyle = "rgba(0,0,0,.34)";
+  ctx.beginPath(); ctx.ellipse(0, R*0.5, R*0.95, R*0.44, 0, 0, Math.PI*2); ctx.fill();
+
+  var lean = (a.prone > 0 || a.diving) ? 1 : 0;
+  if (lean){
+    ctx.rotate(ang - Math.PI/2);
+    ctx.scale(1, a.diving ? 1.32 : 0.72);
+    ctx.rotate(-(ang - Math.PI/2));
+  }
+
+  // torso
+  ctx.save();
+  ctx.rotate(ang - Math.PI/2);
+  ctx.fillStyle = opts.body;
+  ctx.beginPath(); ctx.ellipse(0, 0, R*0.72, R*0.92, 0, 0, Math.PI*2); ctx.fill();
+  if (opts.stripe){
+    ctx.fillStyle = opts.stripe;
+    ctx.fillRect(-R*0.72, -R*0.16, R*1.44, R*0.32);
+  }
+  ctx.restore();
+
+  // head
+  ctx.fillStyle = opts.skin;
+  ctx.beginPath(); ctx.arc(0, 0, R*0.52, 0, Math.PI*2); ctx.fill();
+
+  if (opts.hair){
+    ctx.fillStyle = opts.hair;
+    ctx.beginPath();
+    ctx.arc(0, -R*0.06, R*0.52, Math.PI*0.95, Math.PI*2.05);
+    ctx.fill();
+  }
+  if (opts.helmet){
+    ctx.fillStyle = opts.helmet;
+    ctx.beginPath(); ctx.arc(0, 0, R*0.54, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,.5)"; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.arc(0, 0, R*0.54, 0, Math.PI*2); ctx.stroke();
+  }
+  if (opts.glasses){
+    ctx.strokeStyle = "#12100E"; ctx.lineWidth = Math.max(1.3, R*0.10);
+    ctx.beginPath();
+    ctx.arc(-R*0.19, R*0.06, R*0.155, 0, Math.PI*2);
+    ctx.moveTo(R*0.035, R*0.06);
+    ctx.arc(R*0.19, R*0.06, R*0.155, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-R*0.035, R*0.06); ctx.lineTo(R*0.035, R*0.06); ctx.stroke();
+  }
+
+  // the bag
+  if (opts.bag){
+    ctx.save();
+    ctx.rotate(ang - Math.PI/2);
+    ctx.translate(R*0.72, R*0.30);
+    ctx.fillStyle = "#2F6B3D";
+    ctx.beginPath(); ctx.roundRect(-R*0.40, -R*0.28, R*0.80, R*0.56, R*0.13); ctx.fill();
+    ctx.fillStyle = "#F5B942";
+    ctx.font = "700 " + Math.round(R*0.52) + "px 'Barlow', sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("$", 0, R*0.02);
+    ctx.restore();
+  }
+
+  ctx.restore();
+
+  if (opts.label){
+    ctx.save();
+    ctx.fillStyle = opts.labelColor || "rgba(234,241,230,.72)";
+    ctx.font = "600 10px 'Barlow Condensed', sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(opts.label, s.x, s.y - R*1.35);
+    ctx.restore();
+  }
+}
+
+var TARGET_LOOK_BRIAN = {
+  body:"#8E9AA6", stripe:"#2B3440", skin:"#E8C4A6", hair:"#B4542A",
+  glasses:true, bag:true
+};
+var TARGET_LOOK_PAIGE = {
+  body:"#B5677F", stripe:"#3A2230", skin:"#EBCBAE", hair:"#7A4526",
+  glasses:false, bag:true
+};
+var YOU_LOOK = { body:"#2E6FB5", stripe:"#EAF1E6", skin:"#E8C4A6", helmet:"#DCE7DA" };
+var BLOCK_LOOK = { body:"#5B4A6E", stripe:"#2A2136", skin:"#E0B996", helmet:"#8B7BA5" };
+
+function render(){
+  drawField();
+
+  for (var i=0;i<G.blockers.length;i++){
+    var bl = G.blockers[i];
+    var look = Object.create(BLOCK_LOOK);
+    look.label = ROSTER[bl.who].n;
+    look.labelColor = "rgba(180,150,205,.85)";
+    drawFigure(bl, look);
+  }
+
+  if (G.brian){
+    var tl = Object.create(G.isPaige ? TARGET_LOOK_PAIGE : TARGET_LOOK_BRIAN);
+    tl.label = G.targetName.toUpperCase();
+    tl.labelColor = "rgba(245,185,66,.95)";
+    drawFigure(G.brian, tl);
+  }
+  if (G.you && G.mode !== "attract"){
+    var yl = Object.create(YOU_LOOK);
+    yl.label = "YOU";
+    drawFigure(G.you, yl);
+  }
+
+  drawBits();
+
+  // floating callouts
+  for (var f=0;f<G.flashes.length;f++){
+    var fl = G.flashes[f];
+    var a = Math.max(0, 1 - fl.t / 1.1);
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.fillStyle = fl.color;
+    ctx.font = "400 " + Math.round(Math.min(46, W*0.11)) + "px 'Bebas Neue', sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(fl.text, W/2, H*0.40 - fl.t * 34 - f*24);
+    ctx.restore();
+  }
+
+  // steering tether
+  if (touchPt && G.mode === "live" && G.you){
+    var ys = toScreen(G.you.x, G.you.y);
+    ctx.save();
+    ctx.strokeStyle = "rgba(245,185,66,.28)";
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 5]);
+    ctx.beginPath(); ctx.moveTo(ys.x, ys.y); ctx.lineTo(touchPt.x, touchPt.y); ctx.stroke();
+    ctx.restore();
+  }
+}
+
+/* ---------- attract loop: Brian jogging behind the title ---------- */
+function attractStep(dt){
+  if (!G.brian){
+    G.brian = newActor(FIELD_W/2, 10);
+    G.camY = 14;
+  }
+  G.brian.t = (G.brian.t || 0) + dt;
+  G.brian.x = FIELD_W/2 + Math.sin(G.brian.t * 0.9) * 6.5;
+  G.brian.y = 12 + Math.sin(G.brian.t * 0.5) * 2.2;
+  G.brian.hx = Math.cos(G.brian.t * 0.9) * 0.6;
+  G.brian.hy = 1;
+  var m = Math.hypot(G.brian.hx, G.brian.hy);
+  G.brian.hx /= m; G.brian.hy /= m;
+  G.camY += (16 - G.camY) * dt;
+  G.camXv += (clampCam(G.brian.x) - G.camXv) * dt * 2;
+}
+
+var last = performance.now();
+function frame(now){
+  var dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  if (G.mode === "live") update(dt);
+  else if (G.mode === "attract") attractStep(dt);
+  render();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+/* ============================================================
+   SCREENS
+   ============================================================ */
+var SCREENS = ["home","roster","brief","summary","commish"];
+function show(name){
+  for (var i=0;i<SCREENS.length;i++){
+    $("screen-" + SCREENS[i]).classList.toggle("on", SCREENS[i] === name);
+  }
+  $("bug").style.opacity = (name === null) ? "1" : "0";
+  elTarget.style.opacity = (name === null) ? "1" : "0";
+}
+function hideAll(){ show(null); }
+
+/* ---------- roster ---------- */
+function buildRoster(){
+  var wrap = $("roster");
+  wrap.innerHTML = "";
+  ROSTER.forEach(function(p, i){
+    var used = attemptsFor(i).length;
+    var btn = document.createElement("button");
+    btn.className = "who" + (used >= MAX_ATTEMPTS ? " spent" : "");
+    btn.innerHTML =
+      '<span class="who-n"></span>' +
+      '<span class="who-used"></span>';
+    btn.querySelector(".who-n").textContent = p.n;
+    btn.querySelector(".who-used").textContent =
+      used >= MAX_ATTEMPTS ? "All 3 used" : (MAX_ATTEMPTS - used) + " left";
+    btn.addEventListener("click", function(){ openBrief(i); });
+    wrap.appendChild(btn);
+  });
+}
+
+var pendingIdx = -1;
+function openBrief(i){
+  pendingIdx = i;
+  var used = attemptsFor(i).length;
+  var exhibition = used >= MAX_ATTEMPTS;
+  var isPaige = (i === BRIAN_ROY);
+  var isOtherBrian = OTHER_BRIANS.indexOf(i) >= 0;
+
+  $("brief-eyebrow").textContent = exhibition
+    ? "Attempts used · Exhibition run"
+    : "Attempt " + (used + 1) + " of " + MAX_ATTEMPTS;
+
+  if (isPaige){
+    $("brief-title").textContent = "You can't tackle yourself.";
+    $("brief-lede").innerHTML = "And it was never your money anyway — the league has been Venmo-ing <strong>your wife</strong> for years. Go get <strong>Paige's</strong> money. Fair warning: she's faster than you, Brian.";
+  } else if (isOtherBrian){
+    $("brief-title").textContent = "Not you. The other Brian.";
+    $("brief-lede").innerHTML = "Three Brians in this league and only one of them is holding the bag. Go get <strong>Brian Roy</strong>.";
+  } else {
+    $("brief-title").textContent = "Get Brian's money.";
+    $("brief-lede").innerHTML = "He's got the whole prize pool in a duffel bag and a step on you. Cut off his angle and put him on the ground.";
+  }
+
+  $("brief-go").textContent = exhibition ? "Run For Fun" : "Kick Off";
+  show("brief");
+}
+
+/* ---------- summary ---------- */
+function showSummary(){
+  var used = attemptsFor(G.playerIdx).length;
+  var rec = {
+    playerIdx: G.playerIdx, score: G.score, seed: G.seed,
+    tackles: G.tackles, whiffs: G.whiffs,
+    durationMs: G.durationMs, level: G.level
+  };
+
+  $("sum-total").textContent = G.score.toLocaleString();
+  $("sum-tackles").textContent = G.tackles;
+  $("sum-whiffs").textContent = G.whiffs;
+  $("sum-best").textContent = G.bestHit.toLocaleString();
+  var secs = Math.round(G.durationMs / 1000);
+  $("sum-time").textContent = Math.floor(secs/60) + ":" + String(secs % 60).padStart(2, "0");
+
+  $("sum-title").textContent = G.tackles === 0
+    ? "He walked in untouched."
+    : (G.targetName + " got away.");
+  $("sum-sub").textContent = G.tackles === 0
+    ? "Zero stops. That's a bold draft strategy."
+    : "You put " + G.targetName + " down " + G.tackles + " time" + (G.tackles===1?"":"s") + " before he broke loose.";
+
+  if (G.exhibition){
+    $("sum-eyebrow").textContent = "Exhibition run — not counted";
+    $("code-out").textContent = "No code — all three attempts already used.";
+    $("copy-code").disabled = true;
+    $("sum-note").innerHTML = "<b>" + ROSTER[G.playerIdx].n + "</b> has used all " + MAX_ATTEMPTS + " attempts. Play all you like; this one doesn't count.";
+    $("again").textContent = "Run Again";
+  } else {
+    var all = pushAttempt(G.playerIdx, rec);
+    var code = makeCode(rec);
+    $("sum-eyebrow").textContent = "Attempt " + all.length + " of " + MAX_ATTEMPTS;
+    $("code-out").textContent = code;
+    $("copy-code").disabled = false;
+    var best = all.reduce(function(m, r){ return Math.max(m, r.score); }, 0);
+    var left = MAX_ATTEMPTS - all.length;
+    $("sum-note").innerHTML = "Best so far: <b>" + best.toLocaleString() + "</b>. " +
+      (left > 0 ? left + " attempt" + (left===1?"":"s") + " left — only your best one counts, so send them all."
+                : "That was your last attempt. Send your best code to the chat.");
+    $("again").textContent = left > 0 ? "Next Attempt" : "Exhibition Run";
+  }
+  show("summary");
+}
+
+/* ---------- commissioner board ---------- */
+var lastBoardText = "";
+
+function buildBoard(){
+  var lines = $("codes-in").value.split(/[\s,]+/).filter(function(s){ return s.trim().length; });
+  var best = {}, errors = [];
+
+  lines.forEach(function(line){
+    var res = parseCode(line);
+    if (!res) return;
+    if (!res.ok){ errors.push(res); return; }
+    var idx = res.run.playerIdx;
+    if (!best[idx] || res.run.score > best[idx].run.score) best[idx] = res;
+  });
+
+  var ranked = Object.keys(best).map(function(k){ return best[k]; })
+    .sort(function(a, b){ return b.run.score - a.run.score; });
+
+  var missing = [];
+  for (var i=0;i<ROSTER.length;i++){ if (!best[i]) missing.push(i); }
+
+  var boardEl = $("board");
+  boardEl.innerHTML = "";
+  var textLines = ["FANTASY 2026 — DRAFT ORDER", "(Get Brian's Money, best run per manager)", ""];
+
+  ranked.forEach(function(res, i){
+    var p = ROSTER[res.run.playerIdx], r = res.run;
+    var row = document.createElement("div");
+    row.className = "pick";
+    var sub = r.tackles + " stops · " + r.whiffs + " whiffs · " + r.durationS + "s";
+    row.innerHTML =
+      '<div class="pick-n"></div>' +
+      '<div><div class="pick-name"></div><div class="pick-sub"></div></div>' +
+      '<div class="pick-score"></div>';
+    row.querySelector(".pick-n").textContent = i + 1;
+    row.querySelector(".pick-name").textContent = p.n;
+    var subEl = row.querySelector(".pick-sub");
+    subEl.textContent = sub;
+    if (res.flags && res.flags.length){
+      var w = document.createElement("span");
+      w.className = "warn";
+      w.textContent = "Check: " + res.flags[0];
+      subEl.appendChild(document.createElement("br"));
+      subEl.appendChild(w);
+    }
+    row.querySelector(".pick-score").textContent = r.score.toLocaleString();
+    boardEl.appendChild(row);
+    textLines.push((i+1) + ". " + p.n + " — " + r.score.toLocaleString() +
+      " (" + r.tackles + " stops, " + r.whiffs + " whiffs)" +
+      (res.flags && res.flags.length ? "  ** CHECK: " + res.flags[0] + " **" : ""));
+  });
+
+  missing.forEach(function(idx, j){
+    var p = ROSTER[idx];
+    var row = document.createElement("div");
+    row.className = "pick empty";
+    row.innerHTML =
+      '<div class="pick-n"></div>' +
+      '<div><div class="pick-name"></div><div class="pick-sub"></div></div>' +
+      '<div class="pick-score">No code</div>';
+    row.querySelector(".pick-n").textContent = ranked.length + j + 1;
+    row.querySelector(".pick-name").textContent = p.n;
+    row.querySelector(".pick-sub").textContent = "Hasn't submitted";
+    boardEl.appendChild(row);
+    textLines.push((ranked.length + j + 1) + ". " + p.n + " — no code submitted");
+  });
+
+  var errEl = $("errors");
+  errEl.innerHTML = "";
+  errors.forEach(function(e){
+    var d = document.createElement("div");
+    d.className = "errline";
+    d.textContent = "✕ " + e.error + " — " + e.raw.slice(0, 28) + (e.raw.length > 28 ? "…" : "");
+    errEl.appendChild(d);
+  });
+
+  lastBoardText = textLines.join("\n");
+  if (!ranked.length && !errors.length) toast("Paste some codes first");
+  else toast(ranked.length + " of " + ROSTER.length + " submitted");
+}
+
+function copyText(text, okMsg){
+  if (!text){ toast("Nothing to copy"); return; }
+  function fallback(){
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast(okMsg); }
+    catch(e){ toast("Copy failed — select it by hand"); }
+    document.body.removeChild(ta);
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(function(){ toast(okMsg); }, fallback);
+  } else fallback();
+}
+
+/* ============================================================
+   WIRING
+   ============================================================ */
+$("go-roster").addEventListener("click", function(){ buildRoster(); show("roster"); });
+$("go-commish").addEventListener("click", function(){ show("commish"); });
+$("roster-back").addEventListener("click", function(){ show("home"); });
+$("brief-back").addEventListener("click", function(){ buildRoster(); show("roster"); });
+$("brief-go").addEventListener("click", function(){
+  var used = attemptsFor(pendingIdx).length;
+  hideAll();
+  startRun(pendingIdx, used >= MAX_ATTEMPTS);
+});
+$("copy-code").addEventListener("click", function(){
+  copyText($("code-out").textContent, "Code copied");
+});
+$("again").addEventListener("click", function(){ openBrief(G.playerIdx); });
+$("sum-commish").addEventListener("click", function(){ show("commish"); });
+$("commish-back").addEventListener("click", function(){ show("home"); });
+$("build-board").addEventListener("click", buildBoard);
+$("copy-board").addEventListener("click", function(){
+  if (!lastBoardText) buildBoard();
+  copyText(lastBoardText, "Draft board copied");
+});
+
+show("home");
+})();
+</script>
+</body>
+</html>
