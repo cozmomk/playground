@@ -289,8 +289,8 @@ textarea:focus{border-color:var(--cash);outline:none}
       <h1>Get<span class="em">Brian's Money</span></h1>
       <p class="lede">Brian is running off with the prize pool. You have <strong>three attempts</strong> to chase him down. High score drafts first.</p>
       <div class="rules">
-        <div class="rule"><span class="rule-k">Steer</span><span class="rule-t">Drag anywhere. Your defender runs at your finger.</span></div>
-        <div class="rule"><span class="rule-k">Tackle</span><span class="rule-t">Hit <b>DIVE</b> to lunge. Touching him does nothing — he'll stiff-arm you.</span></div>
+        <div class="rule"><span class="rule-k">Steer</span><span class="rule-t">Touch anywhere — a <b>thumbstick</b> appears where you land. Push it the way you want to run. On a computer, <b>arrow keys or WASD</b>.</span></div>
+        <div class="rule"><span class="rule-k">Tackle</span><span class="rule-t">Hit <b>DIVE</b> — or the <b>spacebar</b> — to lunge. Touching him does nothing; he'll stiff-arm you.</span></div>
         <div class="rule"><span class="rule-k">Catch</span><span class="rule-t">Brian is <b>greased head to toe in hair gel</b>. Grab him from behind and you'll slide right off him — cut off his angle instead.</span></div>
         <div class="rule"><span class="rule-k">Cash</span><span class="rule-t">Stop him deep, hit him hard, string stops together. He reaches the end zone, you're done.</span></div>
         <div class="rule"><span class="rule-k">Tape</span><span class="rule-t">Every run is recorded. Finish top 3 and the commissioner <b>re-runs your tape</b> to confirm the score.</span></div>
@@ -320,8 +320,8 @@ textarea:focus{border-color:var(--cash);outline:none}
       <h2 id="brief-title">Get Brian's money.</h2>
       <p class="lede" id="brief-lede"></p>
       <div class="rules">
-        <div class="rule"><span class="rule-k">Steer</span><span class="rule-t">Drag anywhere on the field.</span></div>
-        <div class="rule"><span class="rule-k">Dive</span><span class="rule-t">Amber button, bottom right. Miss and you're on the ground.</span></div>
+        <div class="rule"><span class="rule-k">Steer</span><span class="rule-t">Thumbstick anywhere on the field, or arrow keys / WASD.</span></div>
+        <div class="rule"><span class="rule-k">Dive</span><span class="rule-t">Amber button, bottom right — or spacebar. Miss and you're on the ground.</span></div>
       </div>
       <button class="btn" id="brief-go">Kick Off</button>
       <div class="btn-row"><button class="btn ghost" id="brief-back">Pick a different name</button></div>
@@ -366,7 +366,7 @@ textarea:focus{border-color:var(--cash);outline:none}
       <h2>Draft Board</h2>
       <p class="lede">Paste score codes and replay tapes — one per line, any order. A tape gets <strong>re-simulated right here</strong>, and whatever it actually scores is what counts.</p>
       <label class="field-k" for="codes-in">Score codes &amp; replay tapes</label>
-      <textarea id="codes-in" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="GBM2Mnwx...&#10;GBMRAgDW..."></textarea>
+      <textarea id="codes-in" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="GBM3Mnwx...&#10;GBMRAwDW..."></textarea>
       <div class="btn-row">
         <button class="btn" id="build-board">Build Draft Order</button>
         <button class="btn ghost" id="copy-board">Copy Board For Chat</button>
@@ -419,38 +419,38 @@ var MAX_TICKS = 40000;
 var NEUTRAL = 32;
 
 var DIRS = [
-  1,0,,
-  0.98078528040323043,0.19509032201612825,,
-  0.92387953251128674,0.38268343236508978,,
-  0.83146961230254524,0.55557023301960218,,
-  0.70710678118654757,0.70710678118654746,,
-  0.55557023301960229,0.83146961230254524,,
-  0.38268343236508984,0.92387953251128674,,
-  0.19509032201612833,0.98078528040323043,,
-  6.123233995736766e-17,1,,
-  -0.19509032201612819,0.98078528040323043,,
-  -0.38268343236508973,0.92387953251128674,,
-  -0.55557023301960196,0.83146961230254546,,
-  -0.70710678118654746,0.70710678118654757,,
-  -0.83146961230254535,0.55557023301960218,,
-  -0.92387953251128674,0.38268343236508989,,
-  -0.98078528040323043,0.19509032201612861,,
-  -1,1.2246467991473532e-16,,
-  -0.98078528040323043,-0.19509032201612836,,
-  -0.92387953251128685,-0.38268343236508967,,
-  -0.83146961230254546,-0.55557023301960196,,
-  -0.70710678118654768,-0.70710678118654746,,
-  -0.55557023301960218,-0.83146961230254524,,
-  -0.38268343236509034,-0.92387953251128652,,
-  -0.19509032201612866,-0.98078528040323032,,
-  -1.8369701987210297e-16,-1,,
-  0.1950903220161283,-0.98078528040323043,,
-  0.38268343236509,-0.92387953251128663,,
-  0.55557023301960184,-0.83146961230254546,,
-  0.70710678118654735,-0.70710678118654768,,
-  0.83146961230254524,-0.55557023301960218,,
-  0.92387953251128652,-0.38268343236509039,,
-  0.98078528040323032,-0.19509032201612872
+  1, 0,
+  0.98078528040323043, 0.19509032201612825,
+  0.92387953251128674, 0.38268343236508978,
+  0.83146961230254524, 0.55557023301960218,
+  0.70710678118654757, 0.70710678118654746,
+  0.55557023301960229, 0.83146961230254524,
+  0.38268343236508984, 0.92387953251128674,
+  0.19509032201612833, 0.98078528040323043,
+  6.123233995736766e-17, 1,
+  -0.19509032201612819, 0.98078528040323043,
+  -0.38268343236508973, 0.92387953251128674,
+  -0.55557023301960196, 0.83146961230254546,
+  -0.70710678118654746, 0.70710678118654757,
+  -0.83146961230254535, 0.55557023301960218,
+  -0.92387953251128674, 0.38268343236508989,
+  -0.98078528040323043, 0.19509032201612861,
+  -1, 1.2246467991473532e-16,
+  -0.98078528040323043, -0.19509032201612836,
+  -0.92387953251128685, -0.38268343236508967,
+  -0.83146961230254546, -0.55557023301960196,
+  -0.70710678118654768, -0.70710678118654746,
+  -0.55557023301960218, -0.83146961230254524,
+  -0.38268343236509034, -0.92387953251128652,
+  -0.19509032201612866, -0.98078528040323032,
+  -1.8369701987210297e-16, -1,
+  0.1950903220161283, -0.98078528040323043,
+  0.38268343236509, -0.92387953251128663,
+  0.55557023301960184, -0.83146961230254546,
+  0.70710678118654735, -0.70710678118654768,
+  0.83146961230254524, -0.55557023301960218,
+  0.92387953251128652, -0.38268343236509039,
+  0.98078528040323032, -0.19509032201612872
 ];
 
 function len(x, y){ return Math.sqrt(x*x + y*y); }
@@ -488,7 +488,7 @@ var MAX_PER_STOP = 12600;
 function newActor(x, y){
   return {x:x, y:y, vx:0, vy:0, hx:0, hy:1,
           diving:false, diveT:0, dx:0, dy:0, hit:false,
-          prone:0, stun:0, cool:0, stiffed:0, boost:0,
+          prone:0, stun:0, cool:0, stiffed:0, boost:0, blockImm:0,
           jukeT:0, jukeDir:0, jukeHold:0, who:0};
 }
 
@@ -665,6 +665,7 @@ function simStep(S, dirIdx, divePressed){
     if (you.stiffed <= 0){ flash(S, "STIFF ARM", "#E5484D"); you.stiffed = 0.6; }
   }
   if (you.stiffed > 0) you.stiffed -= DT;
+  if (you.blockImm > 0) you.blockImm -= DT;
 
   /* blockers */
   for (var i=0;i<S.blockers.length;i++){
@@ -674,8 +675,8 @@ function simStep(S, dirIdx, divePressed){
       steer(bl, 0, 1, 4, 14);
     } else {
       steer(bl, you.x - bl.x, you.y - bl.y, 7.2, 15);
-      if (dist(you.x, you.y, bl.x, bl.y) < 1.15 && you.prone <= 0 && you.stun <= 0){
-        you.stun = 0.55; you.vx *= 0.2; you.vy *= 0.2;
+      if (dist(you.x, you.y, bl.x, bl.y) < 1.15 && you.prone <= 0 && you.stun <= 0 && you.blockImm <= 0){
+        you.stun = 0.55; you.blockImm = 1.4; you.vx *= 0.2; you.vy *= 0.2;
         bl.cool = 2.4;
         flash(S, "BLOCKED — " + ROSTER[bl.who].n.toUpperCase(), "#E5484D");
       }
@@ -743,7 +744,7 @@ function b64ToBytes(str){
 
 function encodeTape(seed, playerIdx, rec){
   var a = [];
-  a.push(2);
+  a.push(3);
   u32(a, seed >>> 0);
   a.push(playerIdx & 255);
   u32(a, rec.ticks);
@@ -761,7 +762,7 @@ function decodeTape(raw){
   try { a = b64ToBytes(s.slice(4)); } catch(e){ return {ok:false, error:"Replay tape is damaged"}; }
   if (a.length < 14) return {ok:false, error:"Replay tape is truncated"};
   var i = 0;
-  if (a[i++] !== 2) return {ok:false, error:"Unrecognized tape version"};
+  if (a[i++] !== 3) return {ok:false, error:"Tape is from an older version — please re-run"};
   var seed = rd32(a, i); i += 4;
   var playerIdx = a[i++];
   var ticks = rd32(a, i); i += 4;
@@ -820,15 +821,15 @@ function sumOf(payload){ return fnv(payload + SALT).toString(36).slice(-5).padSt
 function tapeHash(tapeStr){ return fnv(tapeStr).toString(36).slice(-6); }
 
 function makeCode(r){
-  var payload = [2, r.playerIdx, r.score, r.seed, r.tackles, r.whiffs,
+  var payload = [3, r.playerIdx, r.score, r.seed, r.tackles, r.whiffs,
                  Math.round(r.ticks / TICK_HZ), r.level, r.tapeHash].join("|");
-  return "GBM2" + btoa(payload).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"") + "." + sumOf(payload);
+  return "GBM3" + btoa(payload).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"") + "." + sumOf(payload);
 }
 
 function parseCode(raw){
   var s = (raw||"").trim();
   if (!s) return null;
-  if (s.indexOf("GBM2") !== 0) return {ok:false, raw:s, error:"Not a score code"};
+  if (s.indexOf("GBM3") !== 0) return {ok:false, raw:s, error:s.indexOf("GBM2") === 0 ? "Code is from an older version — please re-run" : "Not a score code"};
   var body = s.slice(4), dot = body.lastIndexOf(".");
   if (dot < 0) return {ok:false, raw:s, error:"Missing checksum"};
   var payload;
@@ -839,7 +840,7 @@ function parseCode(raw){
   } catch(e){ return {ok:false, raw:s, error:"Code is damaged"}; }
   if (sumOf(payload) !== body.slice(dot+1)) return {ok:false, raw:s, error:"Checksum failed — this code was edited"};
   var p = payload.split("|");
-  if (p.length !== 9 || p[0] !== "2") return {ok:false, raw:s, error:"Unrecognized code version"};
+  if (p.length !== 9 || p[0] !== "3") return {ok:false, raw:s, error:"Unrecognized code version"};
   var run = {
     playerIdx:+p[1], score:+p[2], seed:+p[3], tackles:+p[4],
     whiffs:+p[5], durationS:+p[6], level:+p[7], tapeHash:p[8]
@@ -902,7 +903,8 @@ function toast(msg){
 var mode = "attract";
 var S = null, REC = null, attract = null;
 var lastRun = null, exhibition = false, divePending = false;
-var touchPt = null, touchId = null, keys = {};
+var stick = null, keys = {};   // {id, ox, oy, x, y}
+var STICK_DEAD = 9, STICK_MAX = 54;
 
 function quantize(ix, iy){
   if (len(ix, iy) < 0.0001) return NEUTRAL;
@@ -915,23 +917,31 @@ function toScreen(x, y){
   return {x: (x - cam.camXv) * PX + W/2, y: (cam.camY - y) * PX + H/2};
 }
 
-cv.addEventListener("pointerdown", function(e){
-  if (mode !== "live" || touchId !== null) return;
-  touchId = e.pointerId;
+function localPt(e){
   var r = cv.getBoundingClientRect();
-  touchPt = {x: e.clientX - r.left, y: e.clientY - r.top};
-  cv.setPointerCapture(e.pointerId);
+  return {x: e.clientX - r.left, y: e.clientY - r.top};
+}
+cv.addEventListener("pointerdown", function(e){
+  if (mode !== "live" || stick) return;
+  var pt = localPt(e);
+  stick = {id:e.pointerId, ox:pt.x, oy:pt.y, x:pt.x, y:pt.y};
+  try { cv.setPointerCapture(e.pointerId); } catch(err){}
   e.preventDefault();
 }, {passive:false});
 cv.addEventListener("pointermove", function(e){
-  if (e.pointerId !== touchId) return;
-  var r = cv.getBoundingClientRect();
-  touchPt = {x: e.clientX - r.left, y: e.clientY - r.top};
+  if (!stick || e.pointerId !== stick.id) return;
+  var pt = localPt(e);
+  stick.x = pt.x; stick.y = pt.y;
   e.preventDefault();
 }, {passive:false});
-function endPointer(e){ if (e.pointerId === touchId){ touchId = null; touchPt = null; } }
+/* Released off-canvas, or capture lost mid-drag, used to strand the stick
+   down forever — hence listening on window too, not just the canvas. */
+function endPointer(e){ if (stick && e.pointerId === stick.id) stick = null; }
 cv.addEventListener("pointerup", endPointer);
 cv.addEventListener("pointercancel", endPointer);
+window.addEventListener("pointerup", endPointer);
+window.addEventListener("pointercancel", endPointer);
+cv.addEventListener("lostpointercapture", endPointer);
 
 function pressDive(){ if (mode === "live") divePending = true; }
 btnTackle.addEventListener("pointerdown", function(e){
@@ -947,10 +957,9 @@ window.addEventListener("keyup", function(e){ if (e.key) keys[e.key.toLowerCase(
 
 function readInput(){
   var ix = 0, iy = 0;
-  if (touchPt && S){
-    var ys = toScreen(S.you.x, S.you.y);
-    ix = touchPt.x - ys.x; iy = -(touchPt.y - ys.y);
-    if (len(ix, iy) < 10){ ix = 0; iy = 0; }
+  if (stick){
+    var dx = stick.x - stick.ox, dy = stick.y - stick.oy;
+    if (len(dx, dy) >= STICK_DEAD){ ix = dx; iy = -dy; }
   }
   if (keys.arrowleft || keys.a) ix -= 40;
   if (keys.arrowright|| keys.d) ix += 40;
@@ -964,7 +973,7 @@ function startRun(playerIdx, isExhibition){
   var seed = (Date.now() ^ Math.floor(Math.random() * 0x7fffffff)) >>> 0;
   S = createSim(seed, playerIdx, true);
   REC = new Recorder();
-  divePending = false; touchPt = null; touchId = null;
+  divePending = false; stick = null;
   mode = "live";
   btnTackle.classList.add("armed");
   elTarget.textContent = S.targetName + " has the bag";
@@ -974,7 +983,7 @@ function startRun(playerIdx, isExhibition){
 function endRun(){
   mode = "over";
   btnTackle.classList.remove("armed");
-  touchPt = null; touchId = null;
+  stick = null;
   var tape = encodeTape(S.seed, S.playerIdx, REC);
   lastRun = {
     playerIdx: S.playerIdx, score: S.score, seed: S.seed,
@@ -1221,12 +1230,17 @@ function render(){
     ctx.fillText(fl.text, W/2, H*0.40 - fl.t * 34 - f*24);
     ctx.restore();
   }
-  if (touchPt && mode === "live" && S){
-    var ys = toScreen(S.you.x, S.you.y);
+  if (stick && mode === "live"){
+    var dx = stick.x - stick.ox, dy = stick.y - stick.oy;
+    var m = len(dx, dy);
+    if (m > STICK_MAX){ dx = dx / m * STICK_MAX; dy = dy / m * STICK_MAX; }
     ctx.save();
-    ctx.strokeStyle = "rgba(245,185,66,.28)"; ctx.lineWidth = 1.5;
-    ctx.setLineDash([4,5]);
-    ctx.beginPath(); ctx.moveTo(ys.x, ys.y); ctx.lineTo(touchPt.x, touchPt.y); ctx.stroke();
+    ctx.strokeStyle = "rgba(245,185,66,.30)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(stick.ox, stick.oy, STICK_MAX, 0, Math.PI*2); ctx.stroke();
+    ctx.fillStyle = "rgba(245,185,66,.10)";
+    ctx.beginPath(); ctx.arc(stick.ox, stick.oy, STICK_MAX, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = m >= STICK_DEAD ? "rgba(245,185,66,.85)" : "rgba(234,241,230,.45)";
+    ctx.beginPath(); ctx.arc(stick.ox + dx, stick.oy + dy, 21, 0, Math.PI*2); ctx.fill();
     ctx.restore();
   }
 }
