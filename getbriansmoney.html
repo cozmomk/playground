@@ -366,7 +366,7 @@ textarea:focus{border-color:var(--cash);outline:none}
       <h2>Draft Board</h2>
       <p class="lede">Paste score codes and replay tapes — one per line, any order. A tape gets <strong>re-simulated right here</strong>, and whatever it actually scores is what counts.</p>
       <label class="field-k" for="codes-in">Score codes &amp; replay tapes</label>
-      <textarea id="codes-in" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="GBM3Mnwx...&#10;GBMRAwDW..."></textarea>
+      <textarea id="codes-in" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="GBM4Mnwx...&#10;GBMRBADW..."></textarea>
       <div class="btn-row">
         <button class="btn" id="build-board">Build Draft Order</button>
         <button class="btn ghost" id="copy-board">Copy Board For Chat</button>
@@ -478,6 +478,9 @@ var DIVE_BOOST   = 1.9;
 var DIVE_REACH   = 2.0;
 var PRONE_TIME   = 0.62;
 var STIFF_DIST   = 1.05;
+var BLOCKER_SPEED = 6.4;   // slower than you — they cut you off, they don't run you down
+var BLOCK_STUN    = 0.42;
+var BLOCK_COOL    = 3.0;
 var MAX_PER_STOP = 12600;
 
 /* ============================================================
@@ -506,7 +509,7 @@ function setupPlay(S){
   S.brian.jukeT = 0.5 + S.rnd() * 0.5;
 
   S.blockers = [];
-  var count = Math.max(0, Math.min(S.level - 2, 4));
+  var count = Math.max(0, Math.min(4, Math.floor((S.level - 6) / 3) + 1));
   var pool = [];
   for (var i=0;i<ROSTER.length;i++){
     if (i !== S.playerIdx && i !== BRIAN_ROY) pool.push(i);
@@ -540,7 +543,7 @@ function createSim(seed, playerIdx, visual){
 }
 
 function targetSpeed(S){
-  return 8.6 + (S.level - 1) * 0.20 + (S.isPaige ? 0.5 : 0);
+  return 8.6 + (S.level - 1) * 0.07 + (S.isPaige ? 0.5 : 0);
 }
 
 function steer(a, dx, dy, maxSpeed, accel){
@@ -643,7 +646,7 @@ function simStep(S, dirIdx, divePressed){
   br.jukeT -= DT;
   if (br.jukeT <= 0){
     br.jukeDir = (S.rnd() < 0.5 ? -1 : 1) * (0.6 + S.rnd() * 0.9);
-    br.jukeT = Math.max(0.32, 1.05 - S.level * 0.05) + S.rnd() * 0.45;
+    br.jukeT = Math.max(0.40, 1.05 - S.level * 0.02) + S.rnd() * 0.45;
     br.jukeHold = 0.34;
   }
   if (br.jukeHold > 0){ br.jukeHold -= DT; tx += br.jukeDir * 1.5; }
@@ -674,10 +677,10 @@ function simStep(S, dirIdx, divePressed){
       bl.cool -= DT;
       steer(bl, 0, 1, 4, 14);
     } else {
-      steer(bl, you.x - bl.x, you.y - bl.y, 7.2, 15);
+      steer(bl, you.x - bl.x, you.y - bl.y, BLOCKER_SPEED, 15);
       if (dist(you.x, you.y, bl.x, bl.y) < 1.15 && you.prone <= 0 && you.stun <= 0 && you.blockImm <= 0){
-        you.stun = 0.55; you.blockImm = 1.4; you.vx *= 0.2; you.vy *= 0.2;
-        bl.cool = 2.4;
+        you.stun = BLOCK_STUN; you.blockImm = 1.4; you.vx *= 0.2; you.vy *= 0.2;
+        bl.cool = BLOCK_COOL;
         flash(S, "BLOCKED — " + ROSTER[bl.who].n.toUpperCase(), "#E5484D");
       }
     }
@@ -744,7 +747,7 @@ function b64ToBytes(str){
 
 function encodeTape(seed, playerIdx, rec){
   var a = [];
-  a.push(3);
+  a.push(4);
   u32(a, seed >>> 0);
   a.push(playerIdx & 255);
   u32(a, rec.ticks);
@@ -762,7 +765,7 @@ function decodeTape(raw){
   try { a = b64ToBytes(s.slice(4)); } catch(e){ return {ok:false, error:"Replay tape is damaged"}; }
   if (a.length < 14) return {ok:false, error:"Replay tape is truncated"};
   var i = 0;
-  if (a[i++] !== 3) return {ok:false, error:"Tape is from an older version — please re-run"};
+  if (a[i++] !== 4) return {ok:false, error:"Tape is from an older version — please re-run"};
   var seed = rd32(a, i); i += 4;
   var playerIdx = a[i++];
   var ticks = rd32(a, i); i += 4;
@@ -821,15 +824,15 @@ function sumOf(payload){ return fnv(payload + SALT).toString(36).slice(-5).padSt
 function tapeHash(tapeStr){ return fnv(tapeStr).toString(36).slice(-6); }
 
 function makeCode(r){
-  var payload = [3, r.playerIdx, r.score, r.seed, r.tackles, r.whiffs,
+  var payload = [4, r.playerIdx, r.score, r.seed, r.tackles, r.whiffs,
                  Math.round(r.ticks / TICK_HZ), r.level, r.tapeHash].join("|");
-  return "GBM3" + btoa(payload).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"") + "." + sumOf(payload);
+  return "GBM4" + btoa(payload).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"") + "." + sumOf(payload);
 }
 
 function parseCode(raw){
   var s = (raw||"").trim();
   if (!s) return null;
-  if (s.indexOf("GBM3") !== 0) return {ok:false, raw:s, error:s.indexOf("GBM2") === 0 ? "Code is from an older version — please re-run" : "Not a score code"};
+  if (s.indexOf("GBM4") !== 0) return {ok:false, raw:s, error:/^GBM[0-9]/.test(s) ? "Code is from an older version — please re-run" : "Not a score code"};
   var body = s.slice(4), dot = body.lastIndexOf(".");
   if (dot < 0) return {ok:false, raw:s, error:"Missing checksum"};
   var payload;
@@ -840,7 +843,7 @@ function parseCode(raw){
   } catch(e){ return {ok:false, raw:s, error:"Code is damaged"}; }
   if (sumOf(payload) !== body.slice(dot+1)) return {ok:false, raw:s, error:"Checksum failed — this code was edited"};
   var p = payload.split("|");
-  if (p.length !== 9 || p[0] !== "3") return {ok:false, raw:s, error:"Unrecognized code version"};
+  if (p.length !== 9 || p[0] !== "4") return {ok:false, raw:s, error:"Unrecognized code version"};
   var run = {
     playerIdx:+p[1], score:+p[2], seed:+p[3], tackles:+p[4],
     whiffs:+p[5], durationS:+p[6], level:+p[7], tapeHash:p[8]
