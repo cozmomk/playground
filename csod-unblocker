@@ -1,0 +1,91 @@
+// ==UserScript==
+// @name         Unlock Storyline Seekbar & Auto-Advance
+// @namespace    http://tampermonkey.net/
+// @version      4.0
+// @description  Enables slider scrubbing, unlocks next button, and advances timeline to end on click
+// @match        *://*/*
+// @allFrames    true
+// @run-at       document-start
+// @grant        none
+// ==/UserScript==
+
+(function() {
+  'use strict';
+
+  // 1. Force CSS interactability for the seek controls and NEXT button
+  const style = document.createElement('style');
+  style.textContent = `
+    .cs-seekcontrol,
+    .cs-seekcontrol *,
+    .slide-lockable,
+    #seek input[type="range"] {
+      pointer-events: auto !important;
+      cursor: pointer !important;
+    }
+    #next.cs-disabled,
+    #next[aria-disabled="true"],
+    #next.cs-disabled * {
+      pointer-events: auto !important;
+      cursor: pointer !important;
+      opacity: 1 !important;
+    }
+  `;
+  (document.head || document.documentElement).appendChild(style);
+
+  // 2. Continually strip disabling locks from elements
+  const unlockElements = () => {
+    // Unlock the range slider input
+    const slider = document.querySelector('input[data-ref="progressBar"], #seek input[type="range"]');
+    if (slider && slider.hasAttribute('disabled')) {
+      slider.removeAttribute('disabled');
+    }
+
+    // Unlock seek wrapper containers
+    document.querySelectorAll('.cs-seekcontrol.read-only, .slide-lockable').forEach(el => {
+      el.classList.remove('read-only', 'slide-lockable');
+      el.removeAttribute('aria-disabled');
+    });
+
+    // Unlock NEXT button
+    const nextBtn = document.getElementById('next');
+    if (nextBtn) {
+      if (nextBtn.classList.contains('cs-disabled')) nextBtn.classList.remove('cs-disabled');
+      if (nextBtn.getAttribute('aria-disabled') === 'true') nextBtn.setAttribute('aria-disabled', 'false');
+    }
+  };
+
+  // 3. Helper to snap the timeline directly to 100%
+  const advanceToEnd = () => {
+    const slider = document.querySelector('input[data-ref="progressBar"], #seek input[type="range"]');
+    if (slider) {
+      slider.removeAttribute('disabled');
+      slider.value = slider.max;
+      slider.dispatchEvent(new Event('input', { bubbles: true }));
+      slider.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    document.querySelectorAll('video, audio').forEach(media => {
+      if (media.duration && !media.ended) {
+        media.currentTime = media.duration - 0.1;
+      }
+    });
+  };
+
+  // 4. Run observer and interval across slide changes
+  const observer = new MutationObserver(unlockElements);
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['class', 'aria-disabled', 'disabled'],
+    subtree: true,
+    childList: true
+  });
+
+  setInterval(unlockElements, 300);
+
+  // 5. When clicking NEXT, snap timeline to end first
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('#next')) {
+      advanceToEnd();
+    }
+  }, true);
+})();
