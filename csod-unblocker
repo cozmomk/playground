@@ -3,7 +3,7 @@
 // @namespace    http://tampermonkey.net/
 // @version      4.0
 // @description  Enables slider scrubbing, unlocks next button, and advances timeline to end on click
-// @match        *://*/*
+// @match        https://*.csod.com/*
 // @allFrames    true
 // @run-at       document-start
 // @grant        none
